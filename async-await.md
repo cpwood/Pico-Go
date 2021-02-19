@@ -68,31 +68,31 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 ├── board
 │   ├── authorize.js
 │   ├── project-status.js
-│   ├── pyboard-error.js					[No work required]
-│   ├── pyboard.js								[In Progress]
+│   ├── pyboard-error.js          [No work required]
+│   ├── pyboard.js                [In Progress]
 │   ├── runner.js
 │   ├── shell-workers.js
 │   ├── shell.js
 │   └── sync.js
 ├── connections
 │   ├── telnet
-│   │   ├── format.js							[No work required]
-│   │   ├── telnetcli.js					[No work required]
-│   │   └── util-telnet.js				[No work required]
-│   ├── pyserial.js								[Phase 1 Complete]
-│   ├── pysocket.js								[Phase 1 Complete]
-│   └── pytelnet.js								[Phase 1 Complete]
+│   │   ├── format.js             [No work required]
+│   │   ├── telnetcli.js          [No work required]
+│   │   └── util-telnet.js        [No work required]
+│   ├── pyserial.js               [Phase 1 Complete]
+│   ├── pysocket.js               [Phase 1 Complete]
+│   └── pytelnet.js               [Phase 1 Complete]
 ├── helpers
-│   ├── logger.js									[Phase 1 Complete]
-│   └── utils.js									[Phase 1 Complete]
+│   ├── logger.js                 [Phase 1 Complete]
+│   └── utils.js                  [Phase 1 Complete]
 ├── main
 │   ├── api-wrapper.js
 │   ├── panel-view.js
 │   ├── settings-wrapper.js
 │   └── terminal.js
 ├── stubs
-│   └── stubs-manager.js					[Awaiting Phase 3]
-├── config.js											[No work required]
+│   └── stubs-manager.js          [Awaiting Phase 3]
+├── config.js                     [No work required]
 └── pymakr.js
 
 ```
