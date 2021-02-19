@@ -1,6 +1,7 @@
 'use babel';
 
 import * as util from 'util';
+import { Utils as utils } from '../helpers/utils';
 import TelnetClient from './telnet/telnetcli.js';
 
 let AYT = '\xff\xf6';
@@ -93,6 +94,8 @@ export default class PyTelnet {
     this.stream.close();
     // give the connection time to close.
     // there is no proper callback for this in the telnet lib.
+    
+    await utils.sleep(200);
     await new Promise(resolve => setTimeout(resolve, 200));
   }
 

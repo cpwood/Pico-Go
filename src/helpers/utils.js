@@ -292,4 +292,8 @@ export default class Utils {
     );
     return r.test(address);
   }
+
+  async sleep(timeout) {
+    await new Promise(resolve => setTimeout(resolve, timeout));
+  }
 }
