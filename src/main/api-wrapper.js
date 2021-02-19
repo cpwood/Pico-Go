@@ -221,16 +221,6 @@ export default class ApiWrapper {
     })
   }
 
-  // TODO: fix with vscode API to make snippets feature work
-  insertInOpenFile(code){
-    // var editor = atom.workspace.getActiveTextEditor()
-    // if(editor){
-    //   editor.insertText(code.toString())
-    // }else{
-    //   vscode.window.showWarningMessage("No file open to insert code into")
-    // }
-  }
-
   notification(text,type){
     if(type=='warning'){
       vscode.window.showWarningMessage(text)
