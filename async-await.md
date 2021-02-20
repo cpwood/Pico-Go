@@ -86,9 +86,9 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 │   ├── logger.js                 [Phase 1 Complete]
 │   └── utils.js                  [Phase 1 Complete]
 ├── main
-│   ├── api-wrapper.js
+│   ├── api-wrapper.js            [Phase 1 Complete]
 │   ├── panel-view.js
-│   ├── settings-wrapper.js
+│   ├── settings-wrapper.js       [Phase 1 Complete]
 │   └── terminal.js
 ├── stubs
 │   └── stubs-manager.js          [Awaiting Phase 3]

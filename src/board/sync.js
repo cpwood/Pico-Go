@@ -27,7 +27,7 @@ export default class Sync {
 
     this.utils = new Utils(settings)
     this.config = Config.constants()
-    this.allowed_file_types = this.settings.get_allowed_file_types()
+    this.allowed_file_types = this.settings.getAllowedFileTypes()
     this.project_path = this.api.getProjectPath()
     this.isrunning = false
     this.is_stopping = false
@@ -347,7 +347,7 @@ export default class Sync {
         mssg = mssg+". Do you want to download these files into your project ("+_this.project_name+" - "+_this.folder_name+"), overwriting existing files?"
         _this.progress(mssg)
         _this.progress("(Use the confirmation box at the top of the screen)")
-        _this.api.confirm("Downloading files",mssg,options)
+        _this.api.confirm(mssg,options)
       },100)
     })
   }

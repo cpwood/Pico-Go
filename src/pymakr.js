@@ -124,19 +124,6 @@ export default class Pymakr extends EventEmitter {
       }
     });
 
-    this.api.listenToProjectChange(function(path) {
-      let address = _this.settings.address;
-      _this.view.setProjectName(path);
-      _this.settings.projectChanged();
-      if (address != _this.settings.address) {
-        _this.logger.verbose(
-          'Project changed, address changed, therefor connecting again:'
-          );
-        _this.connect();
-      }
-    });
-
-
     this.settings.onChange('auto_connect', function(old_value, new_value) {
       _this.logger.info('auto_connect setting changed to ' + new_value);
       _this.stopAutoConnect();
@@ -611,17 +598,15 @@ export default class Pymakr extends EventEmitter {
   }
 
   uploadFile() {
-    let _this = this;
-    this.api.getOpenFile(function(contents, path) {
-      if (!path) {
-        _this.api.warning('No file open to upload');
-      }
-      else {
-        _this.logger.info(path);
+    let file = this.api.getOpenFile();
 
-        _this.sync('send', path);
-      }
-    });
+    if (!file.path) {
+      this.api.warning('No file open to upload');
+    }
+    else {
+      this.logger.info(file.path);
+      this.sync('send', file.path);
+    }
   }
 
   deleteAllFiles() {
@@ -669,8 +654,7 @@ export default class Pymakr extends EventEmitter {
       },
     };
 
-    _this.api.confirm('Delete all files and directories from board',
-      'Are you sure you want to delete all files and directories from the board?',
+    _this.api.confirm('Are you sure you want to delete all files and directories from the board?',
       options);
   }
 
@@ -756,19 +740,8 @@ export default class Pymakr extends EventEmitter {
     }
   }
 
-  writeHelpText() {
-    this.terminal.enter();
-    this.terminal.write(this.config.help_text);
-
-    if (this.pyboard.connected) {
-      this.logger.verbose('Write prompt');
-      this.terminal.writePrompt();
-    }
-  }
-
   // VSCode only
   writeGetStartedText() {
-    let _this = this;
     this.terminal.enter();
     this.terminal.write(this.config.start_text);
     this.terminal.writeln('');

@@ -51,22 +51,26 @@ export default class Pyboard {
   }
 
   refreshConfig(cb) {
-    let _this = this;
-    this.settings.refresh(function() {
-      _this.params = {
-        port: 23,
-        username: _this.settings.username,
-        password: _this.settings.password,
-        enpassword: '',
-        timeout: _this.settings.timeout,
-        ctrl_c_on_connect: _this.settings.ctrl_c_on_connect
-      };
-      // if(!_this.settings.auto_connect){
-      //   _this.address = _this.settings.address
-      // }
+    this.refreshConfigAsync()
+    .then(() => {
       if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
+  }
 
+  async refreshConfigAsync() {
+    await this.settings.refreshAsync();
+
+    this.params = {
+      port: 23,
+      username: this.settings.username,
+      password: this.settings.password,
+      enpassword: '',
+      timeout: this.settings.timeout,
+      ctrl_c_on_connect: this.settings.ctrl_c_on_connect
+    };
   }
 
   setAddress(address) {

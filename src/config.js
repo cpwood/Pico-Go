@@ -18,35 +18,6 @@ export default class Config {
         'EPIPE': 'Broken pipe',
         'MemoryError': 'Not enough memory available on the board.'
       },
-      help_text: 'Pico-Go VSC Plugin Help. Commands to use (cmd/ctrl + p):\r\n' +
-        '- Connect              : Connects to the board\r\n' +
-        '- Disconnect           : Disconnects from the board\r\n' +
-        '- Global settings      : Opens the installation-wide settings file\r\n' +
-        '- Project settings     : Opens project specific settings that overwrite global settings\r\n' +
-        '- Run current file     : Runs currently open file to the board\r\n' +
-        '- Run current line or \r\n' +
-        '       selection        : Runs the current line or currently selected code on the board\r\n' +
-        '- Upload Project       : Uploads the complete project to the board, using the sync folder settings\r\n' +
-        '- Upload current\r\n' +
-        '       file only       : Uploads the current file to the board, using the sync folder settings\r\n' +
-        '- Download project     : Downloads all files and folders from the board, using the sync folder settings\r\n' +
-        '- Delete all files\r\n' +
-        '       from board      : Deletes all files and folders from your board\r\n' +
-        '- List serial ports    : Lists all available serial ports and copies the first one to the clipboard\r\n' +
-        '- Get firmware version : Displays firmware version of the connected board\r\n' +
-        '\r\n' +
-        'Settings (name : default : description):\r\n' +
-        '- sync_folder             : <empty>             : Folder to synchronize. Empty to sync projects main folder\r\n' +
-        '- sync_file_types         : py,txt,log,json,xml : Type of files to be synchronized\r\n' +
-        '- ctrl_c_on_connect       : false               : If true, executes a ctrl-c on connect to stop running programs\r\n' +
-        '- open_on_start           : true                : Weather to open the terminal and connect to the board when starting vsc\r\n' +
-        '- safe_boot_before_upload : true                : Safe-boots the board before uploading code, to prevent running out of RAM while uploading.\r\n' +
-        '- reboot_after_upload     : true                : Reboots the board after each upload.\r\n' +
-        '- auto_connect            : true                : *Global settings only* If enabled, connects to USB automatically.\r\n' +
-        '- manual_com_device       : <empty>             : *Global settings only* Always connect to this COM port or device.\r\n' +
-        'Any of these can be used inside the Project config to override the global config\r\n' +
-        '\r\n',
-
       start_text: 'Welcome to the Pico-Go plugin! Use the buttons on the left bottom to access all features and commands.\r\n' +
         'This is how you get started:\r\n' +
         " 1: Open 'Global Settings' (we went ahead and did that for you)\r\n" +

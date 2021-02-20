@@ -12,7 +12,7 @@ export default class ProjectStatus {
     this.utils = new Utils(settings)
     this.local_folder = local_folder
     this.settings = settings
-    this.allowed_file_types = this.settings.get_allowed_file_types()
+    this.allowed_file_types = this.settings.getAllowedFileTypes()
     this.content = []
     this.board_file_hashes = {}
     this.local_file_hashes = this.__get_local_files_hashed()

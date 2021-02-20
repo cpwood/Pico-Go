@@ -19,7 +19,7 @@ export default class Utils {
 
   constructor(settings) {
     this.settings = settings;
-    this.allowedFileTypes = this.settings.get_allowed_file_types();
+    this.allowedFileTypes = this.settings.getAllowedFileTypes();
     this._rimraf = util.promisify(rimraf).bind(rimraf);
   }
 
@@ -160,7 +160,7 @@ export default class Utils {
       await fsp.mkdir(directory);
   }
 
-  async exists(path) {
+  static async exists(path) {
     try {
       await fsp.access(path, fs.constants.F_OK);
       return true;
@@ -293,7 +293,7 @@ export default class Utils {
     return r.test(address);
   }
 
-  async sleep(timeout) {
+  static async sleep(timeout) {
     await new Promise(resolve => setTimeout(resolve, timeout));
   }
 }

@@ -22,25 +22,17 @@ export default class Runner {
 
   start(cb) {
     let _this = this;
-    this._getCurrentFile(function(file, filename) {
-      _this.terminal.writeln('Running ' + filename);
-      _this.busy = true;
-      _this.pymakr.view.setButtonState(_this.busy);
+    let xx = this._getCurrentFile();
 
-      _this.pyboard.runAsync(file)
-        .then(() => {
-          _this.busy = false;
-          if (cb) cb();
-        });
-/*
-      _this.pyboard.run(file, function() {
+    _this.terminal.writeln('Running ' + xx.filename);
+    _this.busy = true;
+    _this.pymakr.view.setButtonState(_this.busy);
+
+    _this.pyboard.runAsync(xx.content)
+      .then(() => {
         _this.busy = false;
         if (cb) cb();
       });
-      */
-    }, function onerror(err) {
-      _this.terminal.writeln_and_prompt(err);
-    });
   }
 
   selection(codeblock, cb, hideMessage = false) {
@@ -68,7 +60,7 @@ export default class Runner {
             if (cb) cb();
           });
         });
-        /*
+      /*
       this.pyboard.stop_running_programs_nofollow(function() {
         _this.pyboard.flush(function() {
           _this.pyboard.enter_friendly_repl(function() {});
@@ -81,24 +73,28 @@ export default class Runner {
   }
 
   _getCurrentFile(cb, onerror) {
-    this.api.getOpenFile(function(file, name) {
-      if (!file) {
-        onerror('No file open to run');
+    let file = this.api.getOpenFile();
+
+    if (!file.content) {
+      onerror('No file open to run');
+      return;
+    }
+
+    let filename = 'untitled file';
+    if (file.path) {
+      filename = file.path.split('/').pop(-1);
+      let filetype = filename.split('.').pop(-1);
+      if (filetype.toLowerCase() != 'py') {
+        onerror("Can't run " + filetype +
+          ' files, please run only python files');
         return;
       }
+    }
 
-      let filename = 'untitled file';
-      if (name) {
-        filename = name.split('/').pop(-1);
-        let filetype = filename.split('.').pop(-1);
-        if (filetype.toLowerCase() != 'py') {
-          onerror("Can't run " + filetype +
-            ' files, please run only python files');
-          return;
-        }
-      }
-      cb(file, filename);
-    }, onerror);
+    return {
+      content: file.content,
+      filename: filename
+    };
   }
 
   //remove excessive identation
