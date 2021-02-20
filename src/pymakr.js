@@ -514,7 +514,7 @@ export default class Pymakr extends EventEmitter {
   }
 
   disconnect(cb) {
-
+    let _this = this;
     this.logger.info('Disconnecting...');
     if (this.pyboard.isConnecting()) {
       this.terminal.writeln('Connection attempt canceled');
@@ -524,11 +524,10 @@ export default class Pymakr extends EventEmitter {
     this.api.setConnectionState(this.pyboard.address, false);
     this.pyboard.disconnect(function() {
       if (cb) cb();
+      _this.synchronizing = false;
+      _this.runner.stop();
+      _this.setButtonState();
     });
-    this.synchronizing = false;
-    this.runner.stop();
-    this.setButtonState();
-
   }
 
   run() {

@@ -69,7 +69,7 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 │   ├── authorize.js
 │   ├── project-status.js
 │   ├── pyboard-error.js          [No work required]
-│   ├── pyboard.js                [In Progress]
+│   ├── pyboard.js                [Phase 1 Complete]
 │   ├── runner.js
 │   ├── shell-workers.js
 │   ├── shell.js

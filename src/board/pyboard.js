@@ -52,12 +52,12 @@ export default class Pyboard {
 
   refreshConfig(cb) {
     this.refreshConfigAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async refreshConfigAsync() {
@@ -150,7 +150,8 @@ export default class Pyboard {
   }
 
   async enterFriendlyReplWaitAsync() {
-    await this.sendWaitForAsync(CTRL_B, 'Type "help()" for more information.\r\n>>>');
+    await this.sendWaitForAsync(CTRL_B,
+      'Type "help()" for more information.\r\n>>>');
     this.setStatus(FRIENDLY_REPL);
   }
 
@@ -211,7 +212,8 @@ export default class Pyboard {
 
   async safeBootAsync(timeout) {
     this.logger.info('Safe boot');
-    await this.sendWaitForAsync(CTRL_F, 'Type "help()" for more information.\r\n>>>', timeout);
+    await this.sendWaitForAsync(CTRL_F,
+      'Type "help()" for more information.\r\n>>>', timeout);
   }
 
   stop_running_programs(cb) {
@@ -269,10 +271,11 @@ export default class Pyboard {
 
       this.logger.info('Entering raw repl');
 
-      await this.sendWaitForBlockingAsync(CTRL_A, 'raw REPL; CTRL-B to exit\r\n>', 5000);
+      await this.sendWaitForBlockingAsync(CTRL_A,
+        'raw REPL; CTRL-B to exit\r\n>', 5000);
       this.setStatus(RAW_REPL);
     }
-    catch(err) {
+    catch (err) {
       this.promise.reject(err);
     }
   }
@@ -300,18 +303,11 @@ export default class Pyboard {
     this.connect(cb, onerror, ontimeout, onmessage, true);
   }
 
-  reconnect() {
-    let _this = this;
-
-    _this.disconnect_silent(function() {
-      setTimeout(function() {
-        _this.connect(_this.address, _this.onconnect, _this.onerror,
-          _this.onmessage, _this.type == 'socket');
-      }, 1000);
-    });
+  connect(address, callback, onerror, ontimeout, onmessage, raw) {
+    this.connectAsync(address, callback, onerror, ontimeout, onmessage, raw);
   }
 
-  connect(address, callback, onerror, ontimeout, onmessage, raw) {
+  async connectAsync(address, callback, onerror, ontimeout, onmessage, raw) {
     this.connecting = true;
     this.onconnect = callback;
     this.onmessage = onmessage;
@@ -320,44 +316,51 @@ export default class Pyboard {
     this.address = address;
     this.stopWaitingForSilent();
     this.refreshConfig();
+    this.isSerial = await Pyserial.isSerialPortAsync(this.address);
+
+    if (this.isSerial) {
+      this.connection = new Pyserial(this.address, this.params, this.settings);
+    }
+    else if (raw) {
+      this.connection = new Pysocket(this.address, this.params);
+    }
+    else {
+      this.connection = new Pytelnet(this.address, this.params);
+    }
+
+    this.type = this.connection.type;
+
+    if (this.connection.type == 'telnet') {
+      this.authorize.run(function(error) {
+        if (error) {
+          this._disconnected();
+          callback(error);
+        }
+        else {
+          this._onconnect(callback);
+        }
+      });
+    }
+
     let _this = this;
-    Pyserial.isSerialPort(this.address, function(res) {
-      _this.isSerial = res;
-      if (res) {
-        _this.connection = new Pyserial(_this.address, _this.params, _this
-          .settings);
-      }
-      else if (raw) {
-        _this.connection = new Pysocket(_this.address, _this.params);
-      }
-      else {
-        _this.connection = new Pytelnet(_this.address, _this.params);
-      }
-      _this.type = _this.connection.type;
 
-      if (_this.connection.type == 'telnet') {
-        _this.authorize.run(function(error) {
-          if (error) {
-            _this._disconnected();
-            callback(error);
-          }
-          else {
-            _this._onconnect(callback);
-          }
-        });
-      }
-
-      _this.connection.connect(function() {
+    await this.connection.connectAsync(
+      // onconnect
+      function() {
         _this.connection.registerListener(function(mssg, raw) {
           _this.receive(mssg, raw);
         });
         if (_this.connection.type != 'telnet') {
           _this._onconnect(callback);
         }
-      }, function(err) {
+      },
+      // onerror
+      function(err) {
         _this._disconnected();
         _this.onerror(err);
-      }, function(mssg) {
+      },
+      // ontimeout
+      function(mssg) {
         // Timeout callback only works properly during connect
         // after that it might trigger unneccesarily
         if (_this.isConnecting()) {
@@ -365,39 +368,38 @@ export default class Pyboard {
           ontimeout(mssg, raw);
         }
       });
-    });
   }
 
   _onconnect(cb) {
-    let _this = this;
+    this.connected = true;
+    this.connection.connected = true;
 
-    _this.connected = true;
-    _this.connection.connected = true;
+    this.connecting = false;
 
-    _this.connecting = false;
-
-    if (_this.params.ctrl_c_on_connect && this.type != 'socket') {
-      _this.stop_running_programs(cb);
+    if (this.params.ctrl_c_on_connect && this.type != 'socket') {
+      this.stop_running_programs(cb);
     }
     else {
       cb();
     }
-    _this.startPings(5);
+    this.startPings(5);
   }
 
   _disconnected(cb) {
-    if (this.connection) {
-      this.connection.disconnect(function() {
-        if (cb) {
-          cb();
-        }
+    this._disconnectedAsync()
+      .then(() => {
+        if (cb) cb();
       });
+  }
+
+  async _disconnectedAsync() {
+    if (this.connection) {
+      await this.connection.disconnectAsync();
     }
     this.connecting = false;
     this.connected = false;
     this.stopPings();
   }
-
 
   receive(mssg, raw) {
     this.logger.silly('Received message: ' + mssg);
@@ -494,7 +496,7 @@ export default class Pyboard {
     }
     else if (this.waiting_for_cb) {
       // This is an olds-school callback.
-      this.waiting_for_cb(err,msg,raw);
+      this.waiting_for_cb(err, msg, raw);
     }
     else {
       this.logger.silly('No callback after waiting');
@@ -502,30 +504,41 @@ export default class Pyboard {
   }
 
   disconnect(cb) {
-    this.disconnect_silent(cb);
-    this.setStatus(DISCONNECTED);
+    this.disconnectAsync()
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   disconnect_silent(cb) {
-    this._disconnected(cb);
+    this.disconnectSilentAsync()
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
+  }
+
+  async disconnectAsync() {
+    await this.disconnectSilentAsync();
+    this.setStatus(DISCONNECTED);
+  }
+
+  async disconnectSilentAsync() {
+    await this._disconnectedAsync();
   }
 
   run(filecontents, cb) {
-    let _this = this;
-    this.stop_running_programs(function() {
-      _this.enter_raw_repl_no_reset(function() {
-        _this.setStatus(RUNNING_FILE);
-
-        filecontents += '\r\nimport time';
-        filecontents += '\r\ntime.sleep(0.1)';
-
-        // executing code delayed (20ms) to make sure _this.wait_for(">") is executed before execution is complete
-        _this.exec_raw(filecontents + '\r\n', function() {
-          _this.wait_for('>', function() {
-            _this.enter_friendly_repl_wait(cb);
-          });
-        });
-      });
+    this.runAsync(filecontents)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
   }
 
@@ -557,7 +570,13 @@ export default class Pyboard {
   }
 
   send_with_enter(mssg, cb) {
-    this.connection.send(mssg + '\r\n', cb);
+    this.sendWithEnterAsync(mssg)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async sendWithEnterAsync(msg) {
@@ -565,52 +584,63 @@ export default class Pyboard {
       await this.connection.sendAsync(msg);
     }
   }
-/*
-  send_cmd(cmd, cb) {
-    let mssg = '\x1b' + cmd;
-    let data = Buffer.from(mssg, 'binary');
-    this.connection.send_raw(data, cb);
-  }
-
-  send_cmd_read(cmd, wait_for, cb, timeout) {
-
-    if (typeof wait_for == 'string') {
-      wait_for = '\x1b' + wait_for;
-      wait_for = Buffer.from(wait_for, 'binary');
+  /*
+    send_cmd(cmd, cb) {
+      let mssg = '\x1b' + cmd;
+      let data = Buffer.from(mssg, 'binary');
+      this.connection.send_raw(data, cb);
     }
-    this.read(wait_for, cb, timeout);
-    this.send_cmd(cmd);
-  }
 
-  send_cmd_wait_for(cmd, wait_for, cb, timeout) {
+    send_cmd_read(cmd, wait_for, cb, timeout) {
 
-    if (typeof wait_for == 'string') {
-      wait_for = '\x1b' + wait_for;
-      wait_for = Buffer.from(wait_for, 'binary');
+      if (typeof wait_for == 'string') {
+        wait_for = '\x1b' + wait_for;
+        wait_for = Buffer.from(wait_for, 'binary');
+      }
+      this.read(wait_for, cb, timeout);
+      this.send_cmd(cmd);
     }
-    this.wait_for(wait_for, cb, timeout);
-    this.send_cmd(cmd, function() {
 
-    });
-  }
-*/
+    send_cmd_wait_for(cmd, wait_for, cb, timeout) {
+
+      if (typeof wait_for == 'string') {
+        wait_for = '\x1b' + wait_for;
+        wait_for = Buffer.from(wait_for, 'binary');
+      }
+      this.wait_for(wait_for, cb, timeout);
+      this.send_cmd(cmd, function() {
+
+      });
+    }
+  */
   send_user_input(mssg, cb) {
-    this.send(mssg, cb);
+    this.sendUserInputAsync(mssg)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async sendUserInputAsync(msg) {
     await this.sendAsync(msg);
   }
 
-/*
-  send_raw_wait_for(mssg, wait_for, cb, timeout) {
-    this.wait_for(wait_for, cb, timeout);
-    this.send_raw(mssg);
-  }
-*/
+  /*
+    send_raw_wait_for(mssg, wait_for, cb, timeout) {
+      this.wait_for(wait_for, cb, timeout);
+      this.send_raw(mssg);
+    }
+  */
   send_wait_for(mssg, wait_for, cb, timeout) {
-    this.wait_for(wait_for, cb, timeout);
-    this.send_with_enter(mssg);
+    this.sendWaitForAsync(mssg, wait_for, timeout)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async sendWaitForAsync(mssg, wait_for, timeout) {
@@ -622,13 +652,18 @@ export default class Pyboard {
         },
         timeout);
 
-        this.send_with_enter(mssg);
+      this.send_with_enter(mssg);
     });
   }
 
   send_wait_for_blocking(mssg, wait_for, cb, timeout) {
-    this.wait_for_blocking(wait_for, cb, timeout);
-    this.send_with_enter(mssg);
+    this.sendWaitForBlockingAsync(mssg, wait_for, timeout)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async sendWaitForBlockingAsync(mssg, wait_for, timeout) {
@@ -640,11 +675,12 @@ export default class Pyboard {
         },
         timeout);
 
-        this.send_with_enter(mssg);
+      this.send_with_enter(mssg);
     });
   }
 
   wait_for_blocking(wait_for, cb, timeout, type) {
+    // Can't point this to the asyncified version.
     this.wait_for(wait_for, cb, timeout, type);
     this.wait_for_block = true;
   }
@@ -653,16 +689,16 @@ export default class Pyboard {
     this.waitForAsync(wait_for, promise, timeout, type);
     this.wait_for_block = true;
   }
-/*
-  send_read(mssg, number, cb, timeout) {
-    this.read(number, cb, timeout);
-    this.send_with_enter(mssg);
-  }
+  /*
+    send_read(mssg, number, cb, timeout) {
+      this.read(number, cb, timeout);
+      this.send_with_enter(mssg);
+    }
 
-  read(number, cb, timeout) {
-    this.wait_for_blocking(number, cb, timeout, 'length');
-  }
-  */
+    read(number, cb, timeout) {
+      this.wait_for_blocking(number, cb, timeout, 'length');
+    }
+    */
 
   wait_for(wait_for, cb, timeout, type, clear = true) {
     if (!type) { type = 'string'; }
@@ -735,7 +771,13 @@ export default class Pyboard {
 */
 
   send_raw(mssg, cb) {
-    this.connection.send_raw(mssg, cb);
+    this.sendRawAsync(mssg)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async sendRawAsync(msg) {
@@ -745,12 +787,12 @@ export default class Pyboard {
   }
 
   exec_raw_no_reset(code, cb) {
-    this.logger.verbose('Executing code:' + code);
-    let data = Buffer.from(code, 'binary');
-    this.send_raw(data, function(err) {
-      if (cb) {
-        cb(err);
-      }
+    this.execRawNoResetAsync(code)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
   }
 
@@ -759,24 +801,26 @@ export default class Pyboard {
     let data = Buffer.from(code, 'binary');
     await this.sendRawAsync(data);
   }
-/*
-  exec_raw_delayed(code, cb, timeout) {
-    let _this = this;
-    setTimeout(function() {
-      _this.exec_raw(code, cb, timeout);
-    }, 50);
-  }
+  /*
+    exec_raw_delayed(code, cb, timeout) {
+      let _this = this;
+      setTimeout(function() {
+        _this.exec_raw(code, cb, timeout);
+      }, 50);
+    }
 
-  async execRawDelayedAsync(code, timeout) {
-    await utils.sleep(50);
-    await this.execRawAsync(code, timeout);
-  }
-*/
+    async execRawDelayedAsync(code, timeout) {
+      await utils.sleep(50);
+      await this.execRawAsync(code, timeout);
+    }
+  */
   exec_raw(code, cb, timeout) {
-    let _this = this;
-    this.exec_raw_no_reset(code, function() {
-      _this.logger.silly('Executed raw code, now resetting');
-      _this.soft_reset(cb, timeout);
+    this.execRawAsync(code, timeout)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
   }
 
@@ -786,10 +830,12 @@ export default class Pyboard {
   }
 
   exec_(code, cb) {
-    let _this = this;
-    this.exec_raw_no_reset('\r\n' + code, function() {
-      _this.logger.silly('Executed code, now resetting');
-      _this.soft_reset(cb);
+    this.execAsync_(code)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
   }
 
@@ -800,7 +846,13 @@ export default class Pyboard {
   }
 
   flush(cb) {
-    this.connection.flush(cb);
+    this.flushAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async flushAsync() {
