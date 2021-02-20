@@ -119,15 +119,13 @@ export default class Pyboard {
     this.statusListenerCB = cb;
   }
 
-  enter_friendly_repl(callback) {
-    let _this = this;
-    _this.send_wait_for_blocking(CTRL_B, '\r\n>>>', function(err) {
-      if (!err) {
-        _this.setStatus(FRIENDLY_REPL);
-      }
-      if (callback) {
-        callback(err);
-      }
+  enter_friendly_repl(cb) {
+    this.enterFriendlyReplAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
   }
 
@@ -136,17 +134,14 @@ export default class Pyboard {
     this.setStatus(FRIENDLY_REPL);
   }
 
-  enter_friendly_repl_wait(callback) {
-    let _this = this;
-    _this.send_wait_for(CTRL_B, 'Type "help()" for more information.\r\n>>>',
-      function(err) {
-        if (!err) {
-          _this.setStatus(FRIENDLY_REPL);
-        }
-        if (callback) {
-          callback(err);
-        }
-      });
+  enter_friendly_repl_wait(cb) {
+    this.enterFriendlyReplWaitAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async enterFriendlyReplWaitAsync() {
@@ -155,16 +150,15 @@ export default class Pyboard {
     this.setStatus(FRIENDLY_REPL);
   }
 
-  enter_friendly_repl_non_blocking(callback) {
-    let _this = this;
-    _this.send(CTRL_B, function(err) {
-      if (!err) {
-        _this.setStatus(FRIENDLY_REPL);
-      }
-      if (callback) {
-        callback(err);
-      }
-    }, 2000);
+  enter_friendly_repl_non_blocking(cb) {
+    
+    this.enterFriendlyReplNonBlockingAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async enterFriendlyReplNonBlockingAsync() {
@@ -173,12 +167,13 @@ export default class Pyboard {
   }
 
   soft_reset(cb, timeout) {
-    if (!timeout) {
-      timeout = 5000;
-    }
-    this.logger.info('Soft reset');
-    let wait_for = this.status == RAW_REPL ? '>' : 'OK';
-    this.send_wait_for_blocking(CTRL_D, wait_for, cb, timeout);
+    this.softResetAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async softResetAsync(timeout) {
@@ -191,8 +186,13 @@ export default class Pyboard {
   }
 
   soft_reset_no_follow(cb) {
-    this.logger.info('Soft reset no follow');
-    this.send(CTRL_D, cb, 5000);
+    this.softResetNoFollowAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async softResetNoFollowAsync() {
@@ -201,13 +201,13 @@ export default class Pyboard {
   }
 
   safe_boot(cb, timeout) {
-    let _this = this;
-    this.logger.info('Safe boot');
-    this.send_wait_for(CTRL_F, 'Type "help()" for more information.\r\n>>>',
-      function(err) {
-        _this.logger.info('Safe boot done...');
-        if (cb) cb(err);
-      }, timeout);
+    this.safeBootAsync(timeout)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async safeBootAsync(timeout) {
@@ -217,9 +217,13 @@ export default class Pyboard {
   }
 
   stop_running_programs(cb) {
-    this.send_wait_for(CTRL_C, '>>>', function(err) {
+    this.stopRunningProgramsAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
       if (cb) cb(err);
-    }, 5000);
+    });
   }
 
   async stopRunningProgramsAsync() {
@@ -227,20 +231,26 @@ export default class Pyboard {
   }
 
   stop_running_programs_double(cb, timeout) {
-
-    this.send_wait_for(CTRL_C + CTRL_C, '>>>', function(err) {
+    this.stopRunningProgramsDoubleAsync(timeout)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
       if (cb) cb(err);
-    }, timeout);
+    });
   }
 
   async stopRunningProgramsDoubleAsync(timeout) {
     await this.sendWaitForAsync(CTRL_C + CTRL_C, '>>>', timeout);
   }
 
-  stop_running_programs_nofollow(callback) {
-    this.logger.info('CTRL-C (nofollow)');
-    this.send_with_enter(CTRL_C, function() {
-      callback();
+  stop_running_programs_nofollow(cb) {
+    this.stopRunningProgramsNoFollowAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
   }
 
@@ -249,20 +259,14 @@ export default class Pyboard {
     await this.sendWithEnterAsync(CTRL_C);
   }
 
-  enter_raw_repl_no_reset(callback) {
-    let _this = this;
-    _this.flush(function() {
-      _this.logger.info('Entering raw repl');
-      _this.send_wait_for_blocking(CTRL_A,
-        'raw REPL; CTRL-B to exit\r\n>',
-        function(err) {
-          if (!err) {
-            _this.setStatus(RAW_REPL);
-          }
-          callback(err);
-        }, 5000);
+  enter_raw_repl_no_reset(cb) {
+    this.enterRawReplNoResetAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
-    // })
   }
 
   async enterRawReplNoResetAsync() {

@@ -12,63 +12,91 @@ export default class Runner {
   }
 
   toggle(cb) {
+    this.toggleAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
+  }
+
+  async toggleAsync() {
     if (this.busy) {
-      this.stop(cb);
+      await this.stopAsync();
     }
     else {
-      this.start(cb);
+      await this.startAsync();
     }
   }
 
   start(cb) {
-    let _this = this;
-    let xx = this._getCurrentFile();
-
-    _this.terminal.writeln('Running ' + xx.filename);
-    _this.busy = true;
-    _this.pymakr.view.setButtonState(_this.busy);
-
-    _this.pyboard.runAsync(xx.content)
-      .then(() => {
-        _this.busy = false;
-        if (cb) cb();
-      });
-  }
-
-  selection(codeblock, cb, hideMessage = false) {
-    let _this = this;
-    codeblock = this.__trimcodeblock(codeblock);
-    if (!hideMessage)
-      _this.terminal.writeln('Running selected lines');
-    _this.busy = true;
-    _this.pyboard.run(codeblock, function() {
-      _this.busy = false;
+    this.startAsync()
+    .then(() => {
       if (cb) cb();
-    }, function onerror(err) {
-      _this.terminal.writeln_and_prompt(err);
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
   }
 
+  async startAsync() {
+    let currentFile = this._getCurrentFile();
+
+    if (currentFile == undefined)
+      return;
+
+    this.terminal.writeln('Running ' + currentFile.filename);
+    this.busy = true;
+    this.pymakr.view.setButtonState(this.busy);
+
+    await this.pyboard.runAsync(currentFile.content);
+    this.busy = false;
+  }
+
+  selection(codeblock, cb, hideMessage = false) {
+    this.selectionAsync(codeblock, hideMessage)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
+  }
+
+  async selectionAsync(codeblock, hideMessage = false) {
+    codeblock = this._trimcodeblock(codeblock);
+    if (!hideMessage)
+      this.terminal.writeln('Running selected lines');
+    this.busy = true;
+
+    try {
+      await this.pyboard.runAsync(codeblock);
+      this.busy = false;
+    }
+    catch(err) {
+      this.terminal.writeln_and_prompt(err);
+    }
+  }
+
   stop(cb) {
-    let _this = this;
+    this.stopAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
+  }
+
+  async stopAsync() {
     if (this.busy) {
-      this.pyboard.stopRunningProgramsNoFollowAsync()
-        .then(() => {
-          _this.pyboard.flush(function() {
-            _this.pyboard.enter_friendly_repl(function() {});
-            _this.busy = false;
-            if (cb) cb();
-          });
-        });
-      /*
-      this.pyboard.stop_running_programs_nofollow(function() {
-        _this.pyboard.flush(function() {
-          _this.pyboard.enter_friendly_repl(function() {});
-          _this.busy = false;
-          if (cb) cb();
-        });
-      });
-      */
+      await this.pyboard.stopRunningProgramsNoFollowAsync();
+      await this.pyboard.flushAsync();
+      await this.pyboard.enterFriendlyReplAsync();
+      this.terminal.enter();
+      this.terminal.write('>>> ');
+      this.busy = false;
     }
   }
 
@@ -76,7 +104,6 @@ export default class Runner {
     let file = this.api.getOpenFile();
 
     if (!file.content) {
-      onerror('No file open to run');
       return;
     }
 
@@ -85,8 +112,6 @@ export default class Runner {
       filename = file.path.split('/').pop(-1);
       let filetype = filename.split('.').pop(-1);
       if (filetype.toLowerCase() != 'py') {
-        onerror("Can't run " + filetype +
-          ' files, please run only python files');
         return;
       }
     }
@@ -98,7 +123,7 @@ export default class Runner {
   }
 
   //remove excessive identation
-  __trimcodeblock(codeblock) {
+  _trimcodeblock(codeblock) {
     // regex to split both win and unix style
     let lines = codeblock.match(/[^\n]+(?:\r?\n|$)/g);
     // count leading spaces in line1 ( Only spaces, not TAB)

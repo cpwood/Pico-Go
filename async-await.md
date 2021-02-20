@@ -70,7 +70,7 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 │   ├── project-status.js
 │   ├── pyboard-error.js          [No work required]
 │   ├── pyboard.js                [Phase 1 Complete]
-│   ├── runner.js
+│   ├── runner.js                 [Phase 1 Complete]
 │   ├── shell-workers.js
 │   ├── shell.js
 │   └── sync.js
