@@ -15,6 +15,7 @@ let CTRL_D = '\x04'; // reset (ctrl-d)
 //let CTRL_E = '\x05'; // paste mode (ctrl-e)
 let CTRL_F = '\x06'; // safe boot (ctrl-f)
 //let EOF = '\x04';    // end of file
+let repl_entry_waitfor = 'raw REPL; CTRL-B to exit\r\n>';
 
 
 //statuses
@@ -227,7 +228,8 @@ export default class Pyboard {
   }
 
   async stopRunningProgramsAsync() {
-    await this.sendWaitForAsync(CTRL_C, '>>>', 5000);
+    if (this.status != RAW_REPL)
+      await this.sendWaitForAsync(CTRL_C, '>>>', 5000);
   }
 
   stop_running_programs_double(cb, timeout) {
@@ -241,7 +243,8 @@ export default class Pyboard {
   }
 
   async stopRunningProgramsDoubleAsync(timeout) {
-    await this.sendWaitForAsync(CTRL_C + CTRL_C, '>>>', timeout);
+    if (this.status != RAW_REPL)
+      await this.sendWaitForAsync(CTRL_C + CTRL_C, '>>>', timeout);
   }
 
   stop_running_programs_nofollow(cb) {
@@ -256,7 +259,8 @@ export default class Pyboard {
 
   async stopRunningProgramsNoFollowAsync() {
     this.logger.info('CTRL-C (nofollow)');
-    await this.sendWithEnterAsync(CTRL_C);
+    if (this.status != RAW_REPL)
+      await this.sendWithEnterAsync(CTRL_C);
   }
 
   enter_raw_repl_no_reset(cb) {
@@ -276,7 +280,7 @@ export default class Pyboard {
       this.logger.info('Entering raw repl');
 
       await this.sendWaitForBlockingAsync(CTRL_A,
-        'raw REPL; CTRL-B to exit\r\n>', 5000);
+        repl_entry_waitfor, 5000);
       this.setStatus(RAW_REPL);
     }
     catch (err) {
@@ -473,8 +477,17 @@ export default class Pyboard {
           this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
         }
       }
-      else if (this.getWaitType() == 'literal' && (this.receive_buffer.indexOf(this.waiting_for) > -1 || this
+      else if (this.getWaitType() == 'literal' && (this.status == RAW_REPL || this.receive_buffer.indexOf(repl_entry_waitfor) >= 0) && (this.receive_buffer.indexOf(this.waiting_for) > -1 || this
         .receive_buffer_raw.indexOf(this.waiting_for) > -1)) {
+        let trail = this.receive_buffer.split(this.waiting_for).pop(-1);
+        if (trail && trail.length > 0 && this.wait_for_block) {
+          this.onmessage(trail);
+        }
+        this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
+      }
+      else if (this.getWaitType() == 'literal' && this.status != RAW_REPL && (this.receive_buffer.indexOf(this.waiting_for) > -1 || this
+        .receive_buffer_raw.indexOf(this.waiting_for) > -1) && (this.receive_buffer.indexOf('>>> ') > -1 || this
+        .receive_buffer_raw.indexOf('>>> ') > -1)) {
         let trail = this.receive_buffer.split(this.waiting_for).pop(-1);
         if (trail && trail.length > 0 && this.wait_for_block) {
           this.onmessage(trail);
@@ -653,6 +666,13 @@ export default class Pyboard {
 
   async sendUserInputAsync(msg) {
     await this.sendAsync(msg);
+
+    if (msg == CTRL_A) {
+      this.status = RAW_REPL;
+    }
+    else if (msg == CTRL_B) {
+      this.status = FRIENDLY_REPL;
+    }
   }
 
   /*

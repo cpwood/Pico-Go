@@ -806,7 +806,8 @@ export default class Sync {
   }
 
   start_shell(cb){
-    this.shell = new Shell(this.pyboard,cb,this.method,this.settings);
+    this.shell = new Shell(this.pyboard,this.method,this.settings);
+    this.shell.initialise(cb);
   }
 
   _getFiles(dir){

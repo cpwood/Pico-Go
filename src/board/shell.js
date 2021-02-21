@@ -11,7 +11,7 @@ let path = require('path');
 
 export default class Shell {
 
-  constructor(pyboard,cb,method,settings){
+  constructor(pyboard,method,settings){
     let _this = this;
     this.config = Config.constants();
     this.settings = settings;
@@ -29,15 +29,24 @@ export default class Shell {
     this.working = false;
     this.interrupt_cb = null;
     this.interrupted = false;
+  }
 
+  initialise(cb) {
     this.logger.silly('Try to enter raw mode');
-    this.pyboard.enter_raw_repl_no_reset(function(err){
-      if(err){
-        cb(err);
-      }
 
+    // 3 = RAW_REPL
+    if (this.pyboard.status != 3) {
+      this.pyboard.enter_raw_repl_no_reset(function(err){
+        if(err){
+          cb(err);
+        }
+  
+        cb(null);
+      });
+    }
+    else {
       cb(null);
-    });
+    }
   }
 
   getVersion(cb){
@@ -417,7 +426,11 @@ export default class Shell {
         'import machine\r\n' +
         'machine.reset()\r\n';
     
+    // Hard reset is as above
     this.pyboard.exec_raw_no_reset(command,function(err){
+      // Soft reset isn't actually a soft reset; it's just
+      // that the same key combination (Ctrl+D) is used to 
+      // execute the above code in Raw REPL.
       _this.pyboard.soft_reset_no_follow(cb);
     });
   }
