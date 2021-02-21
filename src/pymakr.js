@@ -332,12 +332,17 @@ export default class Pymakr extends EventEmitter {
       this.terminal.writeln('Please connect to your device');
       return;
     }
+    /*
     let command = 'import os; os.uname().release\r\n';
+    
     this.pyboard.send_wait_for_blocking(command, command, function(err) {
       if (err) {
         _this.logger.error('Failed to send command: ' + command);
       }
-    });
+    });*/
+
+    this.pyboard.xxSendWait('import os; os.uname().release')
+      .catch(err => this.logger.error('Failed to send firmware version command.'));
   }
 
   getFullVersion() {
@@ -435,6 +440,7 @@ export default class Pymakr extends EventEmitter {
 
   continueConnect() {
     let _this = this;
+    this.pyboard.status = 0;
     this.pyboard.refreshConfig(function() {
 
       let address = _this.pyboard.address;

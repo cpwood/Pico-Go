@@ -182,7 +182,7 @@ export default class Pyboard {
     }
     this.logger.info('Soft reset');
     let wait_for = this.status == RAW_REPL ? '>' : 'OK';
-    await this.sendWaitForBlockingAsync(CTRL_D, wait_for, timeout);
+    return await this.sendWaitForBlockingAsync(CTRL_D, wait_for, timeout);
   }
 
   soft_reset_no_follow(cb) {
@@ -405,6 +405,21 @@ export default class Pyboard {
     this.stopPings();
   }
 
+  getWaitType() {
+    let type = Object.prototype.toString.call(this.waiting_for);
+
+    switch(type){
+      case '[object RegExp]':
+        return 'regex';
+      case '[object String]':
+        return 'literal';
+      case '[object Number]':
+        return 'length';
+      default:
+        throw new Error('Unknown wait type');
+    }
+  }
+
   receive(mssg, raw) {
     this.logger.silly('Received message: ' + mssg);
     if (!this.wait_for_block && typeof mssg != 'object' && this.onmessage !=
@@ -451,21 +466,29 @@ export default class Pyboard {
         });
       }
 
-      if (this.waiting_for_type == 'length') {
+      if (this.getWaitType() == 'length') {
         this.logger.silly('Waiting for ' + this.waiting_for + ', got ' + this
           .receive_buffer.length + ' so far');
         if (this.receive_buffer.length >= this.waiting_for) {
           this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
         }
       }
-      else if (this.receive_buffer.indexOf(this.waiting_for) > -1 || this
-        .receive_buffer_raw.indexOf(this.waiting_for) > -1) {
+      else if (this.getWaitType() == 'literal' && (this.receive_buffer.indexOf(this.waiting_for) > -1 || this
+        .receive_buffer_raw.indexOf(this.waiting_for) > -1)) {
         let trail = this.receive_buffer.split(this.waiting_for).pop(-1);
         if (trail && trail.length > 0 && this.wait_for_block) {
           this.onmessage(trail);
         }
         this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
       }
+      else if (this.getWaitType() == 'regex' && (this.waiting_for.test(this.receive_buffer) || 
+        this.waiting_for.test(this.receive_buffer_raw))) {
+      let trail = this.receive_buffer.split(this.waiting_for).pop(-1);
+      if (trail && trail.length > 0 && this.wait_for_block) {
+        this.onmessage(trail);
+      }
+      this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
+    }
     }
   }
 
@@ -546,19 +569,20 @@ export default class Pyboard {
     });
   }
 
-  async runAsync(filecontents) {
+  async runAsync(code) {
     await this.stopRunningProgramsAsync();
     await this.enterRawReplNoResetAsync();
 
     this.setStatus(RUNNING_FILE);
 
-    filecontents += '\r\nimport time';
-    filecontents += '\r\ntime.sleep(0.1)';
+    code += '\r\nimport time';
+    code += '\r\ntime.sleep(0.1)';
 
     // executing code delayed (20ms) to make sure _this.wait_for(">") is executed before execution is complete
-    await this.execRawAsync(filecontents + '\r\n');
+    let response = await this.execRawAsync(code + '\r\n');
     this.waitForAsync('>');
     await this.enterFriendlyReplWaitAsync();
+    return response;
   }
 
   send(mssg, cb) {
@@ -639,8 +663,8 @@ export default class Pyboard {
   */
   send_wait_for(mssg, wait_for, cb, timeout) {
     this.sendWaitForAsync(mssg, wait_for, timeout)
-    .then(() => {
-      if (cb) cb();
+    .then(response => {
+      if (cb) cb(null, response);
     })
     .catch(err => {
       if (cb) cb(err);
@@ -670,7 +694,7 @@ export default class Pyboard {
     });
   }
 
-  async sendWaitForBlockingAsync(mssg, wait_for, timeout) {
+  async  sendWaitForBlockingAsync(mssg, wait_for, timeout) {
     return new Promise((resolve, reject) => {
       this.waitForBlockingAsync(
         wait_for, {
@@ -683,14 +707,14 @@ export default class Pyboard {
     });
   }
 
-  wait_for_blocking(wait_for, cb, timeout, type) {
+  wait_for_blocking(wait_for, cb, timeout) {
     // Can't point this to the asyncified version.
-    this.wait_for(wait_for, cb, timeout, type);
+    this.wait_for(wait_for, cb, timeout);
     this.wait_for_block = true;
   }
 
-  waitForBlockingAsync(wait_for, promise, timeout, type) {
-    this.waitForAsync(wait_for, promise, timeout, type);
+  waitForBlockingAsync(wait_for, promise, timeout) {
+    this.waitForAsync(wait_for, promise, timeout);
     this.wait_for_block = true;
   }
   /*
@@ -704,9 +728,7 @@ export default class Pyboard {
     }
     */
 
-  wait_for(wait_for, cb, timeout, type, clear = true) {
-    if (!type) { type = 'string'; }
-    this.waiting_for_type = type;
+  wait_for(wait_for, cb, timeout, clear = true) {
     this.wait_for_block = false;
     this.waiting_for = wait_for;
     this.waiting_for_cb = cb;
@@ -734,12 +756,7 @@ export default class Pyboard {
     }
   }
 
-  waitForAsync(wait_for, promise, timeout, type, clear = true) {
-    if (!type) {
-      type = 'string';
-    }
-
-    this.waiting_for_type = type;
+  waitForAsync(wait_for, promise, timeout, clear = true) {
     this.wait_for_block = false;
     this.waiting_for = wait_for;
     this.promise = promise;
@@ -773,6 +790,66 @@ export default class Pyboard {
     cb(null, '');
   }
 */
+
+//====================================
+  async xxSend(command) {
+    if (this.connection)
+      await this.connection.sendAsync(command);
+  }
+
+  async xxSendWait(command, waitFor = null, timeout = 5000) {
+    let _this = this;
+    let result = null;
+
+    if (!waitFor)
+      waitFor = this.status == RAW_REPL ? '>' : command;
+
+    if (!command.endsWith('\r\n'))
+      command += '\r\n';
+
+      // If we're waiting for a response, we need to
+      // run the commands we've sent if we're in 
+      // raw REPL.
+    if (this.status == RAW_REPL)
+      command += CTRL_D;
+
+    let promise = new Promise((resolve, reject) => {
+      this.waitForBlockingAsync(
+        waitFor, {
+          resolve: resolve,
+          reject: reject
+        },
+        timeout);
+
+      _this.xxSend(command);
+    });
+
+    result = await promise; 
+    let received = result.msg;
+
+    if (this.status == RAW_REPL) {
+      if (received.startsWith('OK'))
+        received = received.substr(2);
+    
+      // EOT - End of Transmission ASCII character.
+      if (received.indexOf('\u0004') >= 0)
+        received = received.substr(0, received.indexOf('\u0004'));
+    }
+    else {
+      if (received.startsWith(command)) {
+        received = received.substr(command.length);
+      }
+
+      if (received.endsWith('>>> '))
+        received = received.substr(0, received.length - 4);
+    }
+
+
+    return received;
+  }
+
+
+//====================================
 
   send_raw(mssg, cb) {
     this.sendRawAsync(mssg)
@@ -820,8 +897,8 @@ export default class Pyboard {
   */
   exec_raw(code, cb, timeout) {
     this.execRawAsync(code, timeout)
-    .then(() => {
-      if (cb) cb();
+    .then(ret => {
+      if (cb) cb(null, ret);
     })
     .catch(err => {
       if (cb) cb(err);
@@ -830,7 +907,8 @@ export default class Pyboard {
 
   async execRawAsync(code, timeout) {
     await this.execRawNoResetAsync(code);
-    await this.softResetAsync(timeout);
+    let response = await this.softResetAsync(timeout);
+    return response.msg;
   }
 
   exec_(code, cb) {

@@ -51,19 +51,14 @@ export default class Utils {
     }
   }
 
-  doRecursivelyAsync(value, worker) {
-    const promise = new Promise((resolve, reject) => {
-      this.doRecursively(value, worker, (err, val) => {
-        if (err) {
-          reject(err);
-        }
-        else {
-          resolve(val);
-        }
-      });
-    });
+  async doRecursivelyAsync(value, worker) {
+    let result = await worker(value);
 
-    return promise;
+    if (result.done)
+      return result.value;
+
+    await Utils.sleep(20);
+    await this.doRecursivelyAsync2(result.value, worker);
   }
 
   // vscode
