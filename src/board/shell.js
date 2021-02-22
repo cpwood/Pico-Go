@@ -12,7 +12,6 @@ let path = require('path');
 export default class Shell {
 
   constructor(pyboard,method,settings){
-    let _this = this;
     this.config = Config.constants();
     this.settings = settings;
     this.BIN_CHUNK_SIZE = this.settings.upload_chunk_size;

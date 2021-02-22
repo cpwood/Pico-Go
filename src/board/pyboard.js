@@ -12,19 +12,18 @@ let CTRL_A = '\x01'; // raw repl
 let CTRL_B = '\x02'; // exit raw repl
 let CTRL_C = '\x03'; // ctrl-c
 let CTRL_D = '\x04'; // reset (ctrl-d)
-//let CTRL_E = '\x05'; // paste mode (ctrl-e)
+let CTRL_E = '\x05'; // paste mode (ctrl-e)
 let CTRL_F = '\x06'; // safe boot (ctrl-f)
-//let EOF = '\x04';    // end of file
-let repl_entry_waitfor = 'raw REPL; CTRL-B to exit\r\n>';
 
+let repl_entry_waitfor = 'raw REPL; CTRL-B to exit\r\n>';
 
 //statuses
 let DISCONNECTED = 0;
-//let CONNECTED=1;
+let CONNECTED=1;
 let FRIENDLY_REPL = 2;
 let RAW_REPL = 3;
 let RUNNING_FILE = 4;
-//let PASTE_MODE = 5;
+let PASTE_MODE = 5;
 
 export default class Pyboard {
 
@@ -122,12 +121,12 @@ export default class Pyboard {
 
   enter_friendly_repl(cb) {
     this.enterFriendlyReplAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async enterFriendlyReplAsync() {
@@ -137,12 +136,12 @@ export default class Pyboard {
 
   enter_friendly_repl_wait(cb) {
     this.enterFriendlyReplWaitAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async enterFriendlyReplWaitAsync() {
@@ -152,14 +151,14 @@ export default class Pyboard {
   }
 
   enter_friendly_repl_non_blocking(cb) {
-    
+
     this.enterFriendlyReplNonBlockingAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async enterFriendlyReplNonBlockingAsync() {
@@ -169,12 +168,12 @@ export default class Pyboard {
 
   soft_reset(cb, timeout) {
     this.softResetAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async softResetAsync(timeout) {
@@ -188,12 +187,12 @@ export default class Pyboard {
 
   soft_reset_no_follow(cb) {
     this.softResetNoFollowAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async softResetNoFollowAsync() {
@@ -203,12 +202,12 @@ export default class Pyboard {
 
   safe_boot(cb, timeout) {
     this.safeBootAsync(timeout)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async safeBootAsync(timeout) {
@@ -219,12 +218,12 @@ export default class Pyboard {
 
   stop_running_programs(cb) {
     this.stopRunningProgramsAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async stopRunningProgramsAsync() {
@@ -234,12 +233,12 @@ export default class Pyboard {
 
   stop_running_programs_double(cb, timeout) {
     this.stopRunningProgramsDoubleAsync(timeout)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async stopRunningProgramsDoubleAsync(timeout) {
@@ -249,12 +248,12 @@ export default class Pyboard {
 
   stop_running_programs_nofollow(cb) {
     this.stopRunningProgramsNoFollowAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async stopRunningProgramsNoFollowAsync() {
@@ -265,12 +264,12 @@ export default class Pyboard {
 
   enter_raw_repl_no_reset(cb) {
     this.enterRawReplNoResetAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async enterRawReplNoResetAsync() {
@@ -327,7 +326,8 @@ export default class Pyboard {
     this.isSerial = await Pyserial.isSerialPortAsync(this.address);
 
     if (this.isSerial) {
-      this.connection = new Pyserial(this.address, this.params, this.settings);
+      this.connection = new Pyserial(this.address, this.params, this
+      .settings);
     }
     else if (raw) {
       this.connection = new Pysocket(this.address, this.params);
@@ -379,6 +379,7 @@ export default class Pyboard {
   }
 
   _onconnect(cb) {
+    this.setStatus(CONNECTED);
     this.connected = true;
     this.connection.connected = true;
 
@@ -412,7 +413,7 @@ export default class Pyboard {
   getWaitType() {
     let type = Object.prototype.toString.call(this.waiting_for);
 
-    switch(type){
+    switch (type) {
       case '[object RegExp]':
         return 'regex';
       case '[object String]':
@@ -422,6 +423,39 @@ export default class Pyboard {
       default:
         throw new Error('Unknown wait type');
     }
+  }
+
+  isFriendlyLiteralWaitMatch(buffer) {
+    if (
+      this.getWaitType() == 'literal' &&
+      this.status != RAW_REPL &&
+      buffer.indexOf(this.waiting_for) > -1 &&
+      buffer.indexOf('>>> ') > -1
+    )
+      return true;
+
+    return false;
+  }
+
+  isRawLiteralWaitMatch(buffer) {
+    if (
+      this.getWaitType() == 'literal' &&
+      (this.status == RAW_REPL || buffer.indexOf(repl_entry_waitfor) > -1) &&
+      buffer.indexOf(this.waiting_for) > -1
+    )
+      return true;
+
+    return false;
+  }
+
+  isRegexWaitMatch(buffer) {
+    if (
+      this.getWaitType() == 'regex' &&
+      this.waiting_for.test(buffer)
+    )
+      return true;
+
+    return false;
   }
 
   receive(mssg, raw) {
@@ -459,7 +493,9 @@ export default class Pyboard {
     }
     else if (this.waiting_for != null && mssg) {
       this.logger.silly('Waiting for ' + this.waiting_for);
+
       if (this.receive_buffer === undefined) this.receive_buffer = '';
+
       if (this.receive_buffer.indexOf('Invalid credentials, try again.') > -
         1) {
         this._disconnected();
@@ -477,31 +513,20 @@ export default class Pyboard {
           this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
         }
       }
-      else if (this.getWaitType() == 'literal' && (this.status == RAW_REPL || this.receive_buffer.indexOf(repl_entry_waitfor) >= 0) && (this.receive_buffer.indexOf(this.waiting_for) > -1 || this
-        .receive_buffer_raw.indexOf(this.waiting_for) > -1)) {
+      else if (
+        this.isFriendlyLiteralWaitMatch(this.receive_buffer) ||
+        this.isFriendlyLiteralWaitMatch(this.receive_buffer_raw) ||
+        this.isRawLiteralWaitMatch(this.receive_buffer) ||
+        this.isRawLiteralWaitMatch(this.receive_buffer_raw) ||
+        this.isRegexWaitMatch(this.receive_buffer) ||
+        this.isRegexWaitMatch(this.receive_buffer_raw)
+      ) {
         let trail = this.receive_buffer.split(this.waiting_for).pop(-1);
         if (trail && trail.length > 0 && this.wait_for_block) {
           this.onmessage(trail);
         }
         this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
       }
-      else if (this.getWaitType() == 'literal' && this.status != RAW_REPL && (this.receive_buffer.indexOf(this.waiting_for) > -1 || this
-        .receive_buffer_raw.indexOf(this.waiting_for) > -1) && (this.receive_buffer.indexOf('>>> ') > -1 || this
-        .receive_buffer_raw.indexOf('>>> ') > -1)) {
-        let trail = this.receive_buffer.split(this.waiting_for).pop(-1);
-        if (trail && trail.length > 0 && this.wait_for_block) {
-          this.onmessage(trail);
-        }
-        this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
-      }
-      else if (this.getWaitType() == 'regex' && (this.waiting_for.test(this.receive_buffer) || 
-        this.waiting_for.test(this.receive_buffer_raw))) {
-      let trail = this.receive_buffer.split(this.waiting_for).pop(-1);
-      if (trail && trail.length > 0 && this.wait_for_block) {
-        this.onmessage(trail);
-      }
-      this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
-    }
     }
   }
 
@@ -574,12 +599,12 @@ export default class Pyboard {
 
   run(filecontents, cb) {
     this.runAsync(filecontents)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async runAsync(code) {
@@ -612,12 +637,12 @@ export default class Pyboard {
 
   send_with_enter(mssg, cb) {
     this.sendWithEnterAsync(mssg)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async sendWithEnterAsync(msg) {
@@ -656,22 +681,27 @@ export default class Pyboard {
   */
   send_user_input(mssg, cb) {
     this.sendUserInputAsync(mssg)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async sendUserInputAsync(msg) {
     await this.sendAsync(msg);
 
-    if (msg == CTRL_A) {
-      this.status = RAW_REPL;
-    }
-    else if (msg == CTRL_B) {
-      this.status = FRIENDLY_REPL;
+    switch (msg) {
+      case CTRL_A:
+        this.status = RAW_REPL;
+        break;
+      case CTRL_B:
+        this.status = FRIENDLY_REPL;
+        break;
+      case CTRL_E:
+        this.status = PASTE_MODE;
+        break;
     }
   }
 
@@ -683,12 +713,12 @@ export default class Pyboard {
   */
   send_wait_for(mssg, wait_for, cb, timeout) {
     this.sendWaitForAsync(mssg, wait_for, timeout)
-    .then(response => {
-      if (cb) cb(null, response);
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(response => {
+        if (cb) cb(null, response);
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async sendWaitForAsync(mssg, wait_for, timeout) {
@@ -706,15 +736,15 @@ export default class Pyboard {
 
   send_wait_for_blocking(mssg, wait_for, cb, timeout) {
     this.sendWaitForBlockingAsync(mssg, wait_for, timeout)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
-  async  sendWaitForBlockingAsync(mssg, wait_for, timeout) {
+  async sendWaitForBlockingAsync(mssg, wait_for, timeout) {
     return new Promise((resolve, reject) => {
       this.waitForBlockingAsync(
         wait_for, {
@@ -811,7 +841,7 @@ export default class Pyboard {
   }
 */
 
-//====================================
+  //====================================
   async xxSend(command) {
     if (this.connection)
       await this.connection.sendAsync(command);
@@ -827,9 +857,9 @@ export default class Pyboard {
     if (!command.endsWith('\r\n'))
       command += '\r\n';
 
-      // If we're waiting for a response, we need to
-      // run the commands we've sent if we're in 
-      // raw REPL.
+    // If we're waiting for a response, we need to
+    // run the commands we've sent if we're in 
+    // raw REPL.
     if (this.status == RAW_REPL)
       command += CTRL_D;
 
@@ -844,13 +874,13 @@ export default class Pyboard {
       _this.xxSend(command);
     });
 
-    result = await promise; 
+    result = await promise;
     let received = result.msg;
 
     if (this.status == RAW_REPL) {
       if (received.startsWith('OK'))
         received = received.substr(2);
-    
+
       // EOT - End of Transmission ASCII character.
       if (received.indexOf('\u0004') >= 0)
         received = received.substr(0, received.indexOf('\u0004'));
@@ -869,16 +899,16 @@ export default class Pyboard {
   }
 
 
-//====================================
+  //====================================
 
   send_raw(mssg, cb) {
     this.sendRawAsync(mssg)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async sendRawAsync(msg) {
@@ -889,12 +919,12 @@ export default class Pyboard {
 
   exec_raw_no_reset(code, cb) {
     this.execRawNoResetAsync(code)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async execRawNoResetAsync(code) {
@@ -917,12 +947,12 @@ export default class Pyboard {
   */
   exec_raw(code, cb, timeout) {
     this.execRawAsync(code, timeout)
-    .then(ret => {
-      if (cb) cb(null, ret);
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(ret => {
+        if (cb) cb(null, ret);
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async execRawAsync(code, timeout) {
@@ -933,12 +963,12 @@ export default class Pyboard {
 
   exec_(code, cb) {
     this.execAsync_(code)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async execAsync_(code) {
@@ -949,12 +979,12 @@ export default class Pyboard {
 
   flush(cb) {
     this.flushAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async flushAsync() {
