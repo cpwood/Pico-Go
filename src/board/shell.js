@@ -8,6 +8,7 @@ import Config from '../config.js';
 let crypto = require('crypto');
 let exec = require('child_process').exec;
 let path = require('path');
+import FileWriter from './file-writer.js';
 
 export default class Shell {
 
@@ -48,17 +49,7 @@ export default class Shell {
     }
   }
 
-  getVersion(cb){
-    let command =
-        'import os,sys\r\n' +
-        'sys.stdout.write(os.uname().release)\r\n';
-
-    this.pyboard.exec_(command,function(err,content){
-      cb(content);
-    });
-  }
-
-  getFreeMemory(cb){
+  getFreeSpace(cb){
       let command =
           'import os, sys\r\n' +
           "_s = os.statvfs('"+ this.mcu_root_folder +"')\r\n" +
@@ -69,6 +60,16 @@ export default class Shell {
       cb(content);
     });
   }
+
+  async getFreeSpaceAsync(){
+    let command =
+        'import os, sys\r\n' +
+        "_s = os.statvfs('"+ this.mcu_root_folder +"')\r\n" +
+        'sys.stdout.write(str(s[0]*s[3])\r\n' +
+        'del(_s)\r\n';
+
+    return await this.pyboard.xxSendWait(command);
+}
 
   decompress(name,execute,cb){
     if(!execute){
@@ -90,6 +91,20 @@ export default class Shell {
     },40000);
   }
 
+  async decompressAsync(name){
+    let command =
+        'import uzlib\r\n' +
+        'def decompress(name):\r\n' +
+        "  with open(name,'r+') as d:\r\n" +
+        '    c = uzlib.decompress(d.read())\r\n' +
+        "  with open(name,'w') as d:\r\n" +
+        '      d.write(c)\r\n' +
+        '  del(c)\r\n' +
+        "decompress('"+name+"')\r\n";
+
+    await this.pyboard.xxSendWait(command, null, 40000);
+  }
+
   compress(filepath,name,cb){
 
     let name_only = name.substr(name.lastIndexOf('/') + 1);
@@ -105,135 +120,22 @@ export default class Shell {
     );
   }
 
-
   writeFile(name,file_path,contents,compare_hash,compress,callback,retries=0){
-    let _this = this;
-    this.working = true;
-    this.logger.info('Writing file: '+name);
-    this.logger.info('on path: '+file_path);
-    let compressed_path = null;
-
-    let cb = function(err,retry){
-      setTimeout(function(){
-        _this.working = false;
-        callback(err,retry);
-      },100);
-    };
-
-    let worker = function(content,callback){
-      if(_this.interrupted){
-        _this.interrupt_cb();
-        return;
-      }
-      _this.workers.write_file(content,callback);
-    };
-
-    let retry = function(err){
-      if(retries < _this.RETRIES){
-        cb(err,true);
-
-        // if retrying for memory or OS issues (like hash checks gone wrong), do a safe-boot before retrying
-        if(err && (err.message.indexOf('Not enough memory') > -1 || err.message.indexOf('OSError:') > -1)){
-          _this.logger.info('Safe booting...');
-          _this.safeboot_restart(function(){
-            _this.writeFile(name,file_path,contents,compare_hash,compress,cb,retries+1);
-          });
-
-        // if not for memory issues, do a normal retry
-        }else{
-          // wait one second to give the board time to process
-          setTimeout(function(){
-              _this.writeFile(name,file_path,contents,compare_hash,compress,cb,retries+1);
-          },1000);
-        }
-      }else{
-        _this.logger.verbose('No more retries:');
-        cb(err);
-      }
-    };
-
-    let end = function(err,value_processed){
-      
-        if(_this.interrupted){
-          _this.interrupt_cb();
-          return;
-        }
-        _this.eval('f.close()\r\n',function(close_err){
-          if((err || close_err) && retries < _this.RETRIES){
-            retry(err);
-
-          }else if(!err && !close_err){
-            if(compress){
-              try{
-                fs.unlinkSync(compressed_path);
-              }catch(e){
-                _this.logger.info("Removing compressed file failed, likely because it never existed. Otherwise, it'll be removed with the py_compiles folder after upload");
-              }
-            }
-
-            _this.decompress(name,compress,function(){
-              if(_this.interrupted){
-                _this.interrupt_cb();
-                return;
-              }
-              // if(compare_hash){
-              //   _this.board_ready(function(){
-              //     _this.compare_hash(name,file_path,contents,function(match,err){
-              //       _this.resetSyncRoot(function(){
-              //         _this.board_ready(function(){
-              //           if(match){
-              //             cb(null)
-              //           }else if(err){
-              //             _this.logger.warning("Error during file hash check: "+err.message)
-              //             retry(new Error("Filecheck failed: "+err.message))
-              //           }else{
-              //             _this.logger.warning("File hash check didn't match, trying again")
-              //             retry(new Error("Filecheck failed"))
-              //           }
-              //         })
-              //       })
-              //     })
-              //   })
-              // }else{
-                _this.board_ready(function(){
-                  cb(null);
-                });
-              //}
-            });
-          }else if(err){
-            cb(err);
-          }else{
-            cb(close_err);
-          }
-        });
-    };
-
-    let start = function(){
-      _this.ensureDirectory(name, function() {
-        // contents = utf8.encode(contents)
-        _this.setSyncRoot(function(){
-
-          let get_file_command =
-            'import ubinascii\r\n'+
-            "f = open('"+name+"', 'wb')\r\n";
-
-          _this.pyboard.exec_raw_no_reset(get_file_command,function(){
-            _this.utils.doRecursively([contents,0],worker,end);
-          });
-        });
+    this.writeFileAsync(name, file_path, contents, compare_hash, compress, retries)
+      .then(() => {
+        if (callback) callback();
+      })
+      .catch(err => {
+        if (callback) callback(err);
       });
-    };
+  }
 
-    if(compress){
-      _this.compress(file_path,name,function(err,output,cp){
-        compressed_path = cp;
-        contents = fs.readFileSync(compressed_path);
-        start();
-      });
-    }else{
-      start();
-    }
-
+  async writeFileAsync(name,file_path,contents,compare_hash,compress,retries=0){
+    let fw = new FileWriter(this, this.pyboard, this.settings, this.api);
+    // let hash = '';
+    // if (compare_hash)
+    //   hash = await this.getHashAsync(file_path);
+    await fw.writeFileContent(name, file_path, contents, 0);
   }
 
   ensureDirectory(fullPath, cb) {
@@ -264,18 +166,38 @@ export default class Shell {
       command += `ensureFolder("${parts.slice(0, i).join('/')}")\r\n`;
     }
 
-    this.setSyncRoot(function(){
-      _this.eval(command,function(err,content){
-        _this.resetSyncRoot(function(err, content){
-          cb();
-        });
-      });
+    _this.eval(command,function(err,content){
+      cb();
     });
   }
 
   async ensureDirectoryAsync(fullPath) {
-    // TODO: implement properly
-    return new Promise((resolve, reject) => this.ensureDirectory(fullPath, () => resolve()));
+    if (fullPath == undefined || fullPath == null) {
+      return;
+    }
+
+    let parts = fullPath.split(path.sep);
+
+    // Remove filename
+    parts.pop();
+
+    if (parts.length == 0) {
+      return;
+    }
+
+    let command =   'import os\r\n' +
+                    'def ensureFolder(folder):\r\n' +
+                    '   try:\r\n' +
+                    '     os.mkdir(folder)\r\n' +
+                    '   except OSError:\r\n' +
+                    '     ...\r\n' +
+                    '\r\n';
+
+    for(let i=1; i <= parts.length; i++) {
+      command += `ensureFolder("${parts.slice(0, i).join('/')}")\r\n`;
+    }
+
+    await this.pyboard.xxSendWait(command, null, 30000);
   }
 
   readFile(name,callback){
@@ -284,74 +206,67 @@ export default class Shell {
     _this.working = true;
 
     let cb = function(err,content_buffer,content_str){
-      _this.resetSyncRoot(function(){
-        setTimeout(function(){
-          _this.working = false;
-          callback(err,content_buffer,content_str);
-        },100);
-      });
+      setTimeout(function(){
+        _this.working = false;
+        callback(err,content_buffer,content_str);
+      },100);
     };
-    this.setSyncRoot(function(){
+
     // avoid leaking file handles 
-      let command;
-      command = 'import ubinascii,sys' + '\r\n' + 
-              "with open('"+name+"', 'rb') as f:" + '\r\n' + 
-              '  while True:' + '\r\n' + 
-              '    c = ubinascii.b2a_base64(f.read('+_this.BIN_CHUNK_SIZE+'))' + '\r\n' + 
-              '    sys.stdout.write(c)' + '\r\n' + 
-              "    if not len(c) or c == b'\\n':" + '\r\n' + 
-              '        break\r\n';
-    
-              _this.pyboard.exec_raw(command,function(err,content){
+    let command;
+    command = 'import ubinascii,sys' + '\r\n' + 
+            "with open('"+name+"', 'rb') as f:" + '\r\n' + 
+            '  while True:' + '\r\n' + 
+            '    c = ubinascii.b2a_base64(f.read('+_this.BIN_CHUNK_SIZE+'))' + '\r\n' + 
+            '    sys.stdout.write(c)' + '\r\n' + 
+            "    if not len(c) or c == b'\\n':" + '\r\n' + 
+            '        break\r\n';
+  
+            _this.pyboard.exec_raw(command,function(err,content){
 
-        // Workaround for the "OK" return of soft reset, which is sometimes returned with the content
-        if(content.indexOf('OK') == 0){
-          content = content.slice(2,content.length);
-        }
-        // Did an error occur 
-        if (content.includes('Traceback (')) {
-          // some type of error
-          _this.logger.silly('Traceback error reading file contents: '+ content);
-          // pass the error back
-          cb(content,null ,null);
-          return;
-        }
+      // Workaround for the "OK" return of soft reset, which is sometimes returned with the content
+      if(content.indexOf('OK') == 0){
+        content = content.slice(2,content.length);
+      }
+      // Did an error occur 
+      if (content.includes('Traceback (')) {
+        // some type of error
+        _this.logger.silly('Traceback error reading file contents: '+ content);
+        // pass the error back
+        cb(content,null ,null);
+        return;
+      }
 
-        let decode_result = _this.utils.base64decode(content);
-        let content_buffer = decode_result[1];
-        let content_str = decode_result[0].toString();
+      let decode_result = _this.utils.base64decode(content);
+      let content_buffer = decode_result[1];
+      let content_str = decode_result[0].toString();
 
-        if(err){
-          _this.logger.silly('Error after executing read');
-          _this.logger.silly(err);
-        }
-        cb(err,content_buffer,content_str);
-      },60000);
-    });
+      if(err){
+        _this.logger.silly('Error after executing read');
+        _this.logger.silly(err);
+      }
+      cb(err,content_buffer,content_str);
+    },60000);
   }
   // list files on MCU 
   list_files(cb){
     let _this = this;
-    this.setSyncRoot(function(){
-      let file_list = [''];
+    let file_list = [''];
 
-      let end = function(err,file_list_2){
-        // return no error, and the retrieved file_list
-        _this.resetSyncRoot(function(){
-          cb(undefined,file_list);
-        });
-      };
+    let end = function(err,file_list_2){
+      // return no error, and the retrieved file_list
+      cb(undefined,file_list);
+    };
 
-      let worker = function(params,callback){
-        if(_this.interrupted){
-          _this.interrupt_cb();
-          return;
-        }
-        _this.workers.list_files(params,callback);
-      };
-      // need to determine what the root folder of the board is
-      _this.utils.doRecursively([_this.mcu_root_folder,[''],file_list], worker ,end);
-    });
+    let worker = function(params,callback){
+      if(_this.interrupted){
+        _this.interrupt_cb();
+        return;
+      }
+      _this.workers.list_files(params,callback);
+    };
+    // need to determine what the root folder of the board is
+    _this.utils.doRecursively([_this.mcu_root_folder,[''],file_list], worker ,end);
   }
 
   board_ready(cb){
@@ -368,13 +283,10 @@ export default class Shell {
     let command =
         'import os\r\n' +
         "os.remove('"+name+"')\r\n";
-    this.setSyncRoot(function(){
-      _this.eval(command,function(err,content){
-        _this.resetSyncRoot(function(){
+
+        _this.eval(command,function(err,content){
           cb(err,content);
         });
-      });
-    });
   }
 
   createDir(name,cb){
@@ -382,13 +294,9 @@ export default class Shell {
     let command =
         'import os\r\n' +
         "os.mkdir('"+name+"')\r\n";
-    this.setSyncRoot(function(){
-      _this.eval(command,function(err,content){
-        _this.resetSyncRoot(function(){
+        _this.eval(command,function(err,content){
           cb(err,content);
         });
-      });
-    });
   }
 
   changeDir(name,cb){
@@ -396,13 +304,9 @@ export default class Shell {
     let command =
         'import os\r\n' +
         "os.chdir('"+name+"')\r\n";
-    this.setSyncRoot(function(){
-      _this.eval(command,function(err,content){
-        _this.resetSyncRoot(function(){
+        _this.eval(command,function(err,content){
           cb(err,content);
         });
-      });
-    });
   }
 
   removeDir(name,cb){
@@ -410,13 +314,9 @@ export default class Shell {
     let command =
         'import os\r\n' +
         "os.rmdir('"+name+"')\r\n";
-    this.setSyncRoot(function(){
-      _this.eval(command,function(err,content){
-        _this.resetSyncRoot(function(){
+        _this.eval(command,function(err,content){
           cb(err,content);
         });
-      });
-    });
   }
 
   reset(cb){
@@ -426,7 +326,9 @@ export default class Shell {
         'machine.reset()\r\n';
     
     // Hard reset is as above
-    this.pyboard.exec_raw_no_reset(command,function(err){
+    //this.pyboard.exec_raw_no_reset(command,function(err){
+    this.pyboard.xxSend(command)
+    .then(() => {
       // Soft reset isn't actually a soft reset; it's just
       // that the same key combination (Ctrl+D) is used to 
       // execute the above code in Raw REPL.
@@ -511,28 +413,6 @@ export default class Shell {
       _this.logger.silly(content);
       cb(err,content);
     },40000);
-  }
-
-  resetSyncRoot(cb){
-    cb();
-    // TODO: Activate whenever setSyncRoot is impleneted correctly, to reset to mcu_root after each read/write action
-    // var folder = this.mcu_root_folder
-    // var command = 
-    //   "import os\r\n" +
-    //   "os.chdir('"+folder+"')\r\n"
-
-    // this.eval(command,cb)
-  }
-
-  setSyncRoot(cb){
-    cb();
-    // TODO: create a setting / switch / button in UI for 'upload to /sd' or other base folder
-    // var folder = this.settings.upload_base_folder
-    // var command = 
-    //   "import os\r\n" +
-    //   "os.chdir('"+folder+"')\r\n"
-      
-    // this.eval(command,cb)
   }
 
   // evaluates command through REPL and returns the resulting feedback

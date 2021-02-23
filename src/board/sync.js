@@ -136,8 +136,8 @@ export default class Sync {
 
   check_file_size(cb){
     let _this = this;
-    this.shell.getFreeMemory(function(size){
-      if(_this.method == 'send' && size*1000 < _this.total_file_size){
+    this.shell.getFreeSpace(function(size){
+      if(_this.method == 'send' && size*1024 < _this.total_file_size){
         let mssg = 'Not enough space left on device ('+size+'kb) to fit '+_this.total_number_of_files.toString()+' files of ('+parseInt(_this.total_file_size/1000).toString()+'kb)';
         cb(size,Error(mssg));
       }else{

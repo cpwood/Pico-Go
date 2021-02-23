@@ -26,27 +26,32 @@ export default class FileWriter {
     let p = path.parse(filePath);
     let name = p.base;
     let content = await fsp.readFile(filePath); // Buffer
-    let canHash = await this._canHash(content);
+   
 
     if (!filePath.indexOf(this._getSyncRootPath()) == 0)
         throw 'Cannot transfer this file as it\'s not within the project folder structure.';
 
     let boardPath = filePath.replace(this._getSyncRootPath(), '').replace(
       '\\', '/');
-    let hash = canHash ?
-      crypto.createHash('sha256').update(content).digest('hex') :
-      null;
 
-    await this.writeFileContent(name, boardPath, content, hash);
+    await this.writeFileContent(name, boardPath, content);
   }
 
   async writeFileContent(
     name,
     boardPath,
     content,
-    hash,
     attempt = 0
   ) {
+    let canHash = await this._canHash(content);
+
+    let hash = canHash ?
+      crypto.createHash('sha256').update(content).digest('hex') :
+      null;
+
+    if (boardPath == undefined) 
+      boardPath = `/${name}`;
+
     await this.shell.ensureDirectoryAsync(boardPath);
     await this._openFile(boardPath);
 

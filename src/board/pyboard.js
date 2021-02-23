@@ -6,6 +6,7 @@ import Pytelnet from '../connections/pytelnet';
 import Pysocket from '../connections/pysocket';
 import Authorize from './authorize';
 import Logger from '../helpers/logger.js';
+import _ from 'lodash';
 //import { Utils as utils } from '../helpers/utils';
 
 let CTRL_A = '\x01'; // raw repl
@@ -14,6 +15,7 @@ let CTRL_C = '\x03'; // ctrl-c
 let CTRL_D = '\x04'; // reset (ctrl-d)
 let CTRL_E = '\x05'; // paste mode (ctrl-e)
 let CTRL_F = '\x06'; // safe boot (ctrl-f)
+let CTRLS = [CTRL_A, CTRL_B, CTRL_C, CTRL_D, CTRL_E, CTRL_F];
 
 let repl_entry_waitfor = 'raw REPL; CTRL-B to exit\r\n>';
 
@@ -22,8 +24,7 @@ let DISCONNECTED = 0;
 let CONNECTED=1;
 let FRIENDLY_REPL = 2;
 let RAW_REPL = 3;
-let RUNNING_FILE = 4;
-let PASTE_MODE = 5;
+let PASTE_MODE = 4;
 
 export default class Pyboard {
 
@@ -130,7 +131,8 @@ export default class Pyboard {
   }
 
   async enterFriendlyReplAsync() {
-    await this.sendWaitForBlockingAsync(CTRL_B, '\r\n>>>');
+    await this.xxSendWait(CTRL_B, '\r\n>>>');
+    //await this.sendWaitForBlockingAsync(CTRL_B, '\r\n>>>');
     this.setStatus(FRIENDLY_REPL);
   }
 
@@ -145,8 +147,10 @@ export default class Pyboard {
   }
 
   async enterFriendlyReplWaitAsync() {
-    await this.sendWaitForAsync(CTRL_B,
+    await this.xxSendWait(CTRL_B,
       'Type "help()" for more information.\r\n>>>');
+    // await this.sendWaitForAsync(CTRL_B,
+    //   'Type "help()" for more information.\r\n>>>');
     this.setStatus(FRIENDLY_REPL);
   }
 
@@ -162,7 +166,8 @@ export default class Pyboard {
   }
 
   async enterFriendlyReplNonBlockingAsync() {
-    await this.sendAsync(CTRL_B);
+    //await this.sendAsync(CTRL_B);
+    await this.xxSend(CTRL_B);
     this.setStatus(FRIENDLY_REPL);
   }
 
@@ -182,7 +187,8 @@ export default class Pyboard {
     }
     this.logger.info('Soft reset');
     let wait_for = this.status == RAW_REPL ? '>' : 'OK';
-    return await this.sendWaitForBlockingAsync(CTRL_D, wait_for, timeout);
+    //return await this.sendWaitForBlockingAsync(CTRL_D, wait_for, timeout);
+    return await this.xxSendWait(CTRL_D, wait_for, timeout);
   }
 
   soft_reset_no_follow(cb) {
@@ -197,7 +203,8 @@ export default class Pyboard {
 
   async softResetNoFollowAsync() {
     this.logger.info('Soft reset no follow');
-    await this.sendAsync(CTRL_D);
+    //await this.sendAsync(CTRL_D);
+    this.xxSend(CTRL_D);
   }
 
   safe_boot(cb, timeout) {
@@ -212,8 +219,10 @@ export default class Pyboard {
 
   async safeBootAsync(timeout) {
     this.logger.info('Safe boot');
-    await this.sendWaitForAsync(CTRL_F,
+    await this.xxSendWait(CTRL_F,
       'Type "help()" for more information.\r\n>>>', timeout);
+    // await this.sendWaitForAsync(CTRL_F,
+    //   'Type "help()" for more information.\r\n>>>', timeout);
   }
 
   stop_running_programs(cb) {
@@ -227,8 +236,8 @@ export default class Pyboard {
   }
 
   async stopRunningProgramsAsync() {
-    if (this.status != RAW_REPL)
-      await this.sendWaitForAsync(CTRL_C, '>>>', 5000);
+    //await this.sendWaitForAsync(CTRL_C, '>>>', 5000);
+    await this.xxSendWait(CTRL_C, '>>>', 5000);
   }
 
   stop_running_programs_double(cb, timeout) {
@@ -242,8 +251,8 @@ export default class Pyboard {
   }
 
   async stopRunningProgramsDoubleAsync(timeout) {
-    if (this.status != RAW_REPL)
-      await this.sendWaitForAsync(CTRL_C + CTRL_C, '>>>', timeout);
+    //await this.sendWaitForAsync(CTRL_C + CTRL_C, '>>>', timeout);
+    await this.xxSendWait(CTRL_C + CTRL_C, '>>>', timeout);
   }
 
   stop_running_programs_nofollow(cb) {
@@ -258,8 +267,8 @@ export default class Pyboard {
 
   async stopRunningProgramsNoFollowAsync() {
     this.logger.info('CTRL-C (nofollow)');
-    if (this.status != RAW_REPL)
-      await this.sendWithEnterAsync(CTRL_C);
+    //await this.sendWithEnterAsync(CTRL_C);
+    await this.xxSend(`${CTRL_C}\r\n`);
   }
 
   enter_raw_repl_no_reset(cb) {
@@ -278,8 +287,10 @@ export default class Pyboard {
 
       this.logger.info('Entering raw repl');
 
-      await this.sendWaitForBlockingAsync(CTRL_A,
+      await this.xxSendWait(CTRL_A,
         repl_entry_waitfor, 5000);
+      // await this.sendWaitForBlockingAsync(CTRL_A,
+      //   repl_entry_waitfor, 5000);
       this.setStatus(RAW_REPL);
     }
     catch (err) {
@@ -516,14 +527,35 @@ export default class Pyboard {
       else if (
         this.isFriendlyLiteralWaitMatch(this.receive_buffer) ||
         this.isFriendlyLiteralWaitMatch(this.receive_buffer_raw) ||
-        this.isRawLiteralWaitMatch(this.receive_buffer) ||
-        this.isRawLiteralWaitMatch(this.receive_buffer_raw) ||
+        //this.isRawLiteralWaitMatch(this.receive_buffer) ||
+        //this.isRawLiteralWaitMatch(this.receive_buffer_raw) ||
         this.isRegexWaitMatch(this.receive_buffer) ||
         this.isRegexWaitMatch(this.receive_buffer_raw)
       ) {
         let trail = this.receive_buffer.split(this.waiting_for).pop(-1);
         if (trail && trail.length > 0 && this.wait_for_block) {
           this.onmessage(trail);
+        }
+        this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
+      }
+      else if (
+        this.isRawLiteralWaitMatch(this.receive_buffer) ||
+        this.isRawLiteralWaitMatch(this.receive_buffer_raw)
+      ) {
+        let content = this.receive_buffer;
+
+        if (content.indexOf(repl_entry_waitfor) > -1)
+          content = '';
+
+        if (content.startsWith('OK'))
+          content = content.substr(2);
+
+        if (content.endsWith('>')) {
+          content = content.substr(0, content.length - 1);
+        }
+
+        if (content.length > 0 && this.wait_for_block) {
+          this.onmessage(content);
         }
         this.stopWaitingFor(this.receive_buffer, this.receive_buffer_raw);
       }
@@ -608,18 +640,25 @@ export default class Pyboard {
   }
 
   async runAsync(code) {
+    let alreadyRaw = this.status == RAW_REPL;
+
     await this.stopRunningProgramsAsync();
-    await this.enterRawReplNoResetAsync();
 
-    this.setStatus(RUNNING_FILE);
+    if (!alreadyRaw) {
+      await this.enterRawReplNoResetAsync();
+    }
 
+    // executing code delayed (20ms) to make sure _this.wait_for(">") is executed before execution is complete
     code += '\r\nimport time';
     code += '\r\ntime.sleep(0.1)';
 
-    // executing code delayed (20ms) to make sure _this.wait_for(">") is executed before execution is complete
-    let response = await this.execRawAsync(code + '\r\n');
-    this.waitForAsync('>');
-    await this.enterFriendlyReplWaitAsync();
+    //let response = await this.execRawAsync(code + '\r\n');
+    let response = await this.xxSendWait(code);
+
+    if (!alreadyRaw) {
+      await this.enterFriendlyReplWaitAsync();
+    }
+
     return response;
   }
 
@@ -690,19 +729,30 @@ export default class Pyboard {
   }
 
   async sendUserInputAsync(msg) {
-    await this.sendAsync(msg);
+    //await this.sendAsync(msg);
+    await this.xxSend(msg);
 
-    switch (msg) {
-      case CTRL_A:
-        this.status = RAW_REPL;
-        break;
-      case CTRL_B:
-        this.status = FRIENDLY_REPL;
-        break;
-      case CTRL_E:
-        this.status = PASTE_MODE;
-        break;
+    if (msg == CTRL_A) {
+      this.status = RAW_REPL;
     }
+    else if (msg == CTRL_B) {
+      this.status = FRIENDLY_REPL;
+    }
+    else if (msg == CTRL_E) {
+      this.status = PASTE_MODE;
+    }
+
+    // switch (msg) {
+    //   case CTRL_A:
+    //     this.status = RAW_REPL;
+    //     break;
+    //   case CTRL_B:
+    //     this.status = FRIENDLY_REPL;
+    //     break;
+    //   case CTRL_E:
+    //     this.status = PASTE_MODE;
+    //     break;
+    // }
   }
 
   /*
@@ -852,15 +902,16 @@ export default class Pyboard {
     let result = null;
 
     if (!waitFor)
-      waitFor = this.status == RAW_REPL ? '>' : command;
+       waitFor = this.status == RAW_REPL ? '>' : command;
 
-    if (!command.endsWith('\r\n'))
+    if (!_.includes(CTRLS, command) && !command.endsWith('\r\n'))
       command += '\r\n';
 
     // If we're waiting for a response, we need to
     // run the commands we've sent if we're in 
-    // raw REPL.
-    if (this.status == RAW_REPL)
+    // raw REPL. Only do this if we're not exiting raw
+    // REPL, though.
+    if (this.status == RAW_REPL && !command.endsWith(CTRL_D) && command != CTRL_B)
       command += CTRL_D;
 
     let promise = new Promise((resolve, reject) => {
@@ -929,8 +980,10 @@ export default class Pyboard {
 
   async execRawNoResetAsync(code) {
     this.logger.verbose('Executing code:' + code);
-    let data = Buffer.from(code, 'binary');
-    await this.sendRawAsync(data);
+    // TODO: have I messed this up?
+    //let data = Buffer.from(code, 'binary');
+    //await this.sendRawAsync(data);
+    return await this.xxSendWait(code);
   }
   /*
     exec_raw_delayed(code, cb, timeout) {
@@ -958,7 +1011,7 @@ export default class Pyboard {
   async execRawAsync(code, timeout) {
     await this.execRawNoResetAsync(code);
     let response = await this.softResetAsync(timeout);
-    return response.msg;
+    return response;
   }
 
   exec_(code, cb) {
