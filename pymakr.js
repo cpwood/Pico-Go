@@ -4,6 +4,7 @@ let PanelView, Pymakr, Pyboard,SettingsWrapper, pb,v,sw,pymakr;
 let os = require('os');
 let pkg = require('./package.json');
 let _ = require('lodash');
+let path = require('path');
 
 function activate(context) {
 
@@ -131,9 +132,23 @@ function activate(context) {
                     context.subscriptions.push(disposable);
                 
                 
-                    disposable = vscode.commands.registerCommand('pymakr.extra.getVersion', function () {
-                        terminal.show();
-                        pymakr.getVersion();
+                    disposable = vscode.commands.registerCommand('pymakr.extra.pins', function () {
+                        const panel = vscode.window.createWebviewPanel(
+                            'pins',
+                            'Pico Pin Map',
+                            vscode.ViewColumn.One,
+                            {
+                              // Only allow the webview to access resources in our extension's media directory
+                              localResourceRoots: [vscode.Uri.file(path.join(context.extensionPath, 'images'))]
+                            }
+                          );
+                    
+                          const onDiskPath = vscode.Uri.file(
+                            path.join(context.extensionPath, 'images', 'Pico-Pins.png')
+                          );
+                          const imageUrl = panel.webview.asWebviewUri(onDiskPath);
+                    
+                          panel.webview.html = getPinMapHtml(imageUrl);
                     });
                     context.subscriptions.push(disposable);
 
@@ -243,4 +258,24 @@ function checkNodeVersion(cb){
         cb(stdout.substr(0,1) == 'v');
     });
 }
+
+function getPinMapHtml(imageUrl) {
+    return `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Pico Pin Map</title>
+        <style type="text/css">
+            body {
+                background-color: #191c2b;
+            }
+        </style>
+    </head>
+    <body>
+        <img src="${imageUrl}" />
+    </body>
+    </html>`;
+}
+
 exports.deactivate = deactivate;

@@ -104,8 +104,8 @@
         "title": "Pico-Go > Reset > Hard"
       },
       {
-        "command": "pymakr.extra.getVersion",
-        "title": "Pico-Go > Extras > Get firmware version"
+        "command": "pymakr.extra.pins",
+        "title": "Pico-Go > Extras > Show Pico Pin Map"
       },
       {
         "command": "pymakr.extra.getSerial",

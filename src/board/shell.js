@@ -5,7 +5,6 @@ import ShellWorkers from './shell-workers.js';
 import ApiWrapper from '../main/api-wrapper.js';
 import Utils from '../helpers/utils.js';
 import Config from '../config.js';
-let crypto = require('crypto');
 let exec = require('child_process').exec;
 let path = require('path');
 import FileWriter from './file-writer.js';
@@ -269,15 +268,6 @@ export default class Shell {
     _this.utils.doRecursively([_this.mcu_root_folder,[''],file_list], worker ,end);
   }
 
-  board_ready(cb){
-    let _this = this;
-    let command =
-        'import sys\r\n' +
-        "sys.stdout.write('OK')\r\n";
-    this.eval(command,cb,25000);
-  }
-
-
   removeFile(name,cb){
     let _this = this;
     let command =
@@ -287,6 +277,14 @@ export default class Shell {
         _this.eval(command,function(err,content){
           cb(err,content);
         });
+  }
+
+  async removeFileAsync(name) {
+    let command =
+        'import os\r\n' +
+        "os.remove('"+name+"')\r\n";
+
+    await this.pyboard.xxSendWait(command);
   }
 
   createDir(name,cb){
@@ -299,6 +297,13 @@ export default class Shell {
         });
   }
 
+  async createDirAsync(name){
+    let command =
+        'import os\r\n' +
+        "os.mkdir('"+name+"')\r\n";
+    await this.pyboard.xxSendWait(command);
+  }
+
   changeDir(name,cb){
     let _this = this;
     let command =
@@ -309,6 +314,13 @@ export default class Shell {
         });
   }
 
+  async changeDirAsync(name){
+    let command =
+        'import os\r\n' +
+        "os.chdir('"+name+"')\r\n";
+    await this.pyboard.xxSendWait(command);
+  }
+
   removeDir(name,cb){
     let _this = this;
     let command =
@@ -317,6 +329,13 @@ export default class Shell {
         _this.eval(command,function(err,content){
           cb(err,content);
         });
+  }
+
+  async removeDirAsync(name){
+    let command =
+        'import os\r\n' +
+        "os.rmdir('"+name+"')\r\n";
+    await this.pyboard.xxSendWait(command);
   }
 
   reset(cb){
@@ -336,83 +355,21 @@ export default class Shell {
     });
   }
 
+  async resetAsync(){
+    let command =
+        'import machine\r\n' +
+        'machine.reset()\r\n';
+
+    await this.pyboard.xxSend(command);
+    await this.pyboard.xxSend(this.EOF); // Execute.
+  }
+
   safeboot_restart(cb){
     let _this = this;
     this.pyboard.safe_boot(function(){
       _this.pyboard.enter_raw_repl_no_reset(cb);
     },4000);
 
-  }
-
-  get_version(cb){
-    let _this = this;
-    let command = 'import os; os.uname().release\r\n';
-
-    this.eval(command,function(err,content){
-      let version = content.replace(command,'').replace(/>>>/g,'').replace(/'/g,'').replace(/\r\n/g,'').trim();
-      let version_int = _this.utils.calculateIntVersion(version);
-      if(version_int == 0 || isNaN(version_int)){
-        err = new Error('Error retrieving version number');
-      }else{
-        err = undefined;
-      }
-      cb(err,version_int,version);
-    });
-  }
-
-  compare_hash(filename,file_path,content_buffer,cb){
-    let _this = this;
-
-    let compare = function(local_hash){
-      _this.get_hash(filename,function(err,remote_hash){
-        _this.logger.silly('Comparing local hash to remote hash');
-        _this.logger.silly('local: '+local_hash);
-        _this.logger.silly('remote: '+remote_hash);
-        cb(local_hash == remote_hash,err);
-      });
-    };
-    // the file you want to get the hash
-    if(file_path){
-      let fd = fs.createReadStream(file_path);
-      let hash = crypto.createHash('sha256');
-      hash.setEncoding('hex');
-
-      fd.on('end', function() {
-          hash.end();
-          let local_hash = hash.read();
-          compare(local_hash);
-      });
-      fd.pipe(hash);
-    }else{
-      let local_hash = crypto.createHash('sha256').update(content_buffer.toString()).digest('hex');
-      compare(local_hash);
-    }
-  }
-
-  get_hash(filename,cb){
-    let _this = this;
-
-    let command =
-        'import uhashlib,ubinascii,sys\r\n' +
-        'hash = uhashlib.sha256()\r\n' +
-        "with open('"+filename+"', 'rb') as f:\r\n"+
-        '  while True:\r\n'+
-        '    c = f.read('+this.BIN_CHUNK_SIZE+')\r\n'+
-        '    if not c:\r\n'+
-        '       break\r\n'+
-        '    hash.update(c)\r\n'+
-        'sys.stdout.write(ubinascii.hexlify(hash.digest()))\r\n';
-
-    this.eval(command,function(err,content){
-      content = content.slice(2,-3).replace('>','');
-      if(err){
-        _this.logger.silly('Error after reading hash:');
-        _this.logger.silly(err);
-      }
-      _this.logger.silly('Returned content from hash:');
-      _this.logger.silly(content);
-      cb(err,content);
-    },40000);
   }
 
   // evaluates command through REPL and returns the resulting feedback
