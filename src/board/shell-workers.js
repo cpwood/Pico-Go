@@ -111,7 +111,7 @@ export default class ShellWorkers {
         _this.shell.eval(c, function(err, content) {
           if (content) {
             let data = binascii.unhexlify(content);
-            data = data.slice(1, -2);
+            //data = data.slice(1, -2);
             try {
               let list = eval(data);
               // Filter bad results
