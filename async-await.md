@@ -66,7 +66,7 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 ```
 .
 ├── board
-│   ├── authorize.js
+│   ├── authorize.js              [Phase 1 Complete]
 │   ├── project-status.js         [Phase 1 Complete]
 │   ├── pyboard-error.js          [No work required]
 │   ├── pyboard.js                [Phase 1 Complete]
