@@ -25,13 +25,10 @@ export default class Shell {
     this.pyboard = pyboard;
     this.api = new ApiWrapper();
     this.logger = new Logger('Shell');
-    this.workers = new ShellWorkers(this, pyboard, settings);
     this.utils = new Utils(settings);
-    this.lib_folder = this.api.getPackageSrcPath();
-    this.package_folder = this.api.getPackagePath();
-    this.mcu_root_folder = '/';
+    this.mcuRootFolder = '/';
     this.working = false;
-    this.interrupt_cb = null;
+    this.interruptCb = null;
     this.interrupted = false;
   }
 
@@ -44,7 +41,7 @@ export default class Shell {
         if (cb) cb(err);
       });
   }
-  
+
   async initialiseAsync() {
     this.logger.silly('Try to enter raw mode');
 
@@ -67,7 +64,7 @@ export default class Shell {
   async getFreeSpaceAsync() {
     let command =
       'import os, sys\r\n' +
-      "_s = os.statvfs('" + this.mcu_root_folder + "')\r\n" +
+      "_s = os.statvfs('" + this.mcuRootFolder + "')\r\n" +
       'sys.stdout.write(str(s[0]*s[3])\r\n' +
       'del(_s)\r\n';
 
@@ -100,17 +97,17 @@ export default class Shell {
 
   compress(filepath, name, cb) {
     this.compressAsync(filepath, name)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async compressAsync(filepath, name) {
     let deflator = createDeflate({
-        level: 2
+      level: 2
     });
     let source = createReadStream(filepath);
     let destination = createWriteStream(name);
@@ -140,12 +137,12 @@ export default class Shell {
 
   ensureDirectory(fullPath, cb) {
     this.ensureDirectoryAsync(fullPath)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async ensureDirectoryAsync(fullPath) {
@@ -214,72 +211,73 @@ export default class Shell {
       throw content;
     }
 
-    let decode_result = this.utils.base64decode(content);
-    let content_buffer = decode_result[1];
-    let content_str = decode_result[0].toString();
+    let decodeResult = this.utils.base64decode(content);
+    let contentBuffer = decodeResult[1];
+    let contentStr = decodeResult[0].toString();
 
     this.working = false;
 
     return {
-      buffer: content_buffer,
-      str: content_str
+      buffer: contentBuffer,
+      str: contentStr
     };
   }
 
   async listAsync(root, recursive = false, hash = false) {
     let toPythonBoolean = (value) => value ? 'True' : 'False';
-    
+
     // Based on code by Jos Verlinde:
     // https://gist.github.com/Josverl/a6f6be74e5193a8145e351ff9439ae3e
-    let command = '# get file and folder information and return this as JSON\r\n' +
-    '# params : folder , traverse subdirectory , output format, gethash\r\n' +
-    '# intended to allow simple processing of files\r\n' +
-    '# jos_verlinde@hotmail.com\r\n' +
-    'import uos as os, json\r\n' +
-    'import uhashlib,ubinascii\r\n' +     
-    '\r\n' +
-    'def listdir(path=".",sub=False,JSON=True,gethash=False):\r\n' +
-    '    #Lists the file information of a folder\r\n' +
-    '    li=[]\r\n' +
-    '    if path==".": #Get current folder name\r\n' +
-    '        path=os.getcwd()\r\n' +
-    '    files = os.listdir(path)\r\n' +
-    '    for file in files:\r\n' +
-    '        #get size of each file \r\n' +
-    '        info = {"Path": path, "Name": file, "Size": 0}\r\n' +
-    '        if path[-1]=="/":\r\n' +
-    '            full = "%s%s" % (path, file)\r\n' +
-    '        else:\r\n' +
-    '            full = "%s/%s" % (path, file)\r\n' +
-    '        subdir = []\r\n' +
-    '        try:\r\n' +
-    '            stat = os.stat(full)\r\n' +
-    '            if stat[0] & 0x4000:  # stat.S_IFDIR\r\n' +
-    '                info["Type"] = "dir"\r\n' +
-    '                #recurse folder(s)\r\n' +
-    '                if sub == True:\r\n' +
-    '                    subdir = listdir(path=full,sub=True,JSON=False)\r\n' +
-    '            else:\r\n' +
-    '                info["Size"] = stat[6]\r\n' +
-    '                info["Type"] = "file"\r\n' +
-    '                if(gethash):\r\n' +
-    '                    with open(full, "rb") as f:\r\n' +
-    '                        h = uhashlib.sha256(f.read())\r\n' +
-    '                        info["Hash"] = ubinascii.hexlify(h.digest())\r\n' +
-    '        except OSError as e:\r\n' +
-    '            info["OSError"] = e.args[0]\r\n' +
-    '            info["Type"] = "OSError"\r\n' +
-    '        info["Fullname"]=full\r\n' +
-    '        li.append(info)\r\n' +
-    '        #recurse folder(s)\r\n' +
-    '        if sub == True: \r\n' +
-    '            li = li + subdir\r\n' +
-    '    if JSON==True:\r\n' +
-    '        return json.dumps(li)\r\n' +
-    '    else: \r\n' +
-    '        return li\r\n' +
-    '\r\n' +
-    `print(listdir("${root}", ${toPythonBoolean(recursive)}, True, ${toPythonBoolean(hash)}))`;
+    let command =
+      '# get file and folder information and return this as JSON\r\n' +
+      '# params : folder , traverse subdirectory , output format, gethash\r\n' +
+      '# intended to allow simple processing of files\r\n' +
+      '# jos_verlinde@hotmail.com\r\n' +
+      'import uos as os, json\r\n' +
+      'import uhashlib,ubinascii\r\n' +
+      '\r\n' +
+      'def listdir(path=".",sub=False,JSON=True,gethash=False):\r\n' +
+      '    #Lists the file information of a folder\r\n' +
+      '    li=[]\r\n' +
+      '    if path==".": #Get current folder name\r\n' +
+      '        path=os.getcwd()\r\n' +
+      '    files = os.listdir(path)\r\n' +
+      '    for file in files:\r\n' +
+      '        #get size of each file \r\n' +
+      '        info = {"Path": path, "Name": file, "Size": 0}\r\n' +
+      '        if path[-1]=="/":\r\n' +
+      '            full = "%s%s" % (path, file)\r\n' +
+      '        else:\r\n' +
+      '            full = "%s/%s" % (path, file)\r\n' +
+      '        subdir = []\r\n' +
+      '        try:\r\n' +
+      '            stat = os.stat(full)\r\n' +
+      '            if stat[0] & 0x4000:  # stat.S_IFDIR\r\n' +
+      '                info["Type"] = "dir"\r\n' +
+      '                #recurse folder(s)\r\n' +
+      '                if sub == True:\r\n' +
+      '                    subdir = listdir(path=full,sub=True,JSON=False)\r\n' +
+      '            else:\r\n' +
+      '                info["Size"] = stat[6]\r\n' +
+      '                info["Type"] = "file"\r\n' +
+      '                if(gethash):\r\n' +
+      '                    with open(full, "rb") as f:\r\n' +
+      '                        h = uhashlib.sha256(f.read())\r\n' +
+      '                        info["Hash"] = ubinascii.hexlify(h.digest())\r\n' +
+      '        except OSError as e:\r\n' +
+      '            info["OSError"] = e.args[0]\r\n' +
+      '            info["Type"] = "OSError"\r\n' +
+      '        info["Fullname"]=full\r\n' +
+      '        li.append(info)\r\n' +
+      '        #recurse folder(s)\r\n' +
+      '        if sub == True: \r\n' +
+      '            li = li + subdir\r\n' +
+      '    if JSON==True:\r\n' +
+      '        return json.dumps(li)\r\n' +
+      '    else: \r\n' +
+      '        return li\r\n' +
+      '\r\n' +
+      `print(listdir("${root}", ${toPythonBoolean(recursive)}, True, ${toPythonBoolean(hash)}))`;
 
     let raw = await this.pyboard.xxSendWait(command, null, 10000);
     return JSON.parse(raw);
@@ -288,13 +286,14 @@ export default class Shell {
   // list files on MCU 
   list_files(cb) {
     this.listAsync('/', true, false)
-    .then(result => {
-      let ret = _.map(_.filter(result, x => x.Type == 'file'), x => x.Fullname);
-      if (cb) cb(null, ret);
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(result => {
+        let ret = _.map(_.filter(result, x => x.Type == 'file'), x => x
+          .Fullname);
+        if (cb) cb(null, ret);
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   removeFile(name, cb) {
@@ -359,12 +358,12 @@ export default class Shell {
 
   reset(cb) {
     this.resetAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async resetAsync() {
@@ -408,12 +407,12 @@ export default class Shell {
 
   exit(cb) {
     this.exitAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async exitAsync() {
@@ -423,12 +422,12 @@ export default class Shell {
 
   stop_working(cb) {
     this.stopWorkingAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async stopWorkingAsync() {
@@ -441,11 +440,11 @@ export default class Shell {
         _this.logger.info(
           'Exiting shell while still working, doing interrupt');
         let cb_done = false;
-        this.interrupt_cb = function() {
+        this.interruptCb = function() {
           cb_done = true;
           _this.working = false;
           _this.interrupted = false;
-          _this.interrupt_cb = null;
+          _this.interruptCb = null;
           _this.logger.info('Interrupt done, closing');
           resolve();
         };
@@ -467,12 +466,12 @@ export default class Shell {
 
   __clean_close(cb) {
     this._cleanCloseAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async _cleanCloseAsync() {

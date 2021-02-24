@@ -193,7 +193,7 @@ export default class Sync {
       let filename = files.split('/').pop();
       this.terminal.write(this.method_action+' current file ('+filename+')...\r\n');
       // TODO: Add notification about the upload target folder when this feature is implemented
-      // this.terminal.write(this.method_action+" current file ("+filename+") "+direction+" "+this.shell.mcu_root_folder+"...\r\n")
+      // this.terminal.write(this.method_action+" current file ("+filename+") "+direction+" "+this.shell._folder+"...\r\n")
     }else{
       this.terminal.write(this.method_action+' project ('+this.folder_name+')...\r\n');
     }
@@ -216,7 +216,7 @@ export default class Sync {
         if(_this.method_action.toLowerCase() == 'downloading'){
           direction = 'from';
         }
-        _this.terminal.write(_this.method_action+' '+direction+' '+_this.shell.mcu_root_folder+'...\r\n');
+        _this.terminal.write(_this.method_action+' '+direction+' '+_this.shell.mcuRootFolder+'...\r\n');
         
         _this.project_status = new ProjectStatus(_this.shell,_this.settings,_this.py_folder);
         _this.logger.silly('Entered raw mode');
