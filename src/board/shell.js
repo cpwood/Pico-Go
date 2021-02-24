@@ -8,6 +8,12 @@ import Config from '../config.js';
 import { exec } from 'child_process';
 import path from 'path';
 import FileWriter from './file-writer.js';
+import { createDeflate } from 'zlib';
+import { pipeline } from 'stream';
+import { createReadStream, createWriteStream } from 'fs';
+import { promisify } from 'util';
+
+const pipe = promisify(pipeline);
 
 export default class Shell {
 
@@ -83,9 +89,9 @@ export default class Shell {
     let command =
       'import uzlib\r\n' +
       'def decompress(name):\r\n' +
-      "  with open(name,'r+') as d:\r\n" +
+      "  with open(name,'rb+') as d:\r\n" +
       '    c = uzlib.decompress(d.read())\r\n' +
-      "  with open(name,'w') as d:\r\n" +
+      "  with open(name,'wb') as d:\r\n" +
       '      d.write(c)\r\n' +
       '  del(c)\r\n' +
       "decompress('" + name + "')\r\n";
@@ -94,20 +100,22 @@ export default class Shell {
   }
 
   compress(filepath, name, cb) {
+    this.compressAsync(filepath, name)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
+  }
 
-    let name_only = name.substr(name.lastIndexOf('/') + 1);
-    let zipped_path = filepath.replace(name, this.config
-      .compressed_files_folder + '/');
-    let zipped_filepath = zipped_path + name_only + '.gz';
-
-    this.utils.ensureDirectoryExistence(zipped_path);
-
-    exec('python ' + this.package_folder + '/scripts/compress.py "' +
-      filepath + '" "' + zipped_filepath + '"',
-      function(error, stdout, stderr) {
-        cb(error, stdout, zipped_filepath);
-      }
-    );
+  async compressAsync(filepath, name) {
+    let deflator = createDeflate({
+        level: 2
+    });
+    let source = createReadStream(filepath);
+    let destination = createWriteStream(name);
+    await pipe(source, deflator, destination);
   }
 
   writeFile(name, file_path, contents, compare_hash, compress, callback,
