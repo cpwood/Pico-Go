@@ -6,8 +6,6 @@ import ApiWrapper from '../main/api-wrapper.js';
 import Utils from '../helpers/utils.js';
 import Config from '../config.js';
 import { exec } from 'child_process';
-//let exec = require('child_process').exec;
-//let path = require('path');
 import path from 'path';
 import FileWriter from './file-writer.js';
 
@@ -33,33 +31,32 @@ export default class Shell {
   }
 
   initialise(cb) {
+    this.initialiseAsync()
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
+  }
+  
+  async initialiseAsync() {
     this.logger.silly('Try to enter raw mode');
 
     // 3 = RAW_REPL
     if (this.pyboard.status != 3) {
-      this.pyboard.enter_raw_repl_no_reset(function(err) {
-        if (err) {
-          cb(err);
-        }
-
-        cb(null);
-      });
-    }
-    else {
-      cb(null);
+      await this.pyboard.enterRawReplNoResetAsync();
     }
   }
 
   getFreeSpace(cb) {
-    let command =
-      'import os, sys\r\n' +
-      "_s = os.statvfs('" + this.mcu_root_folder + "')\r\n" +
-      'sys.stdout.write(str(s[0]*s[3])\r\n' +
-      'del(_s)\r\n';
-
-    this.pyboard.exec_(command, function(err, content) {
-      cb(content);
-    });
+    this.getFreeSpaceAsync()
+      .then(result => {
+        if (cb) cb(null, result);
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async getFreeSpaceAsync() {
@@ -73,23 +70,13 @@ export default class Shell {
   }
 
   decompress(name, execute, cb) {
-    if (!execute) {
-      cb();
-      return;
-    }
-    let command =
-      'import uzlib\r\n' +
-      'def decompress(name):\r\n' +
-      "  with open(name,'r+') as d:\r\n" +
-      '    c = uzlib.decompress(d.read())\r\n' +
-      "  with open(name,'w') as d:\r\n" +
-      '      d.write(c)\r\n' +
-      '  del(c)\r\n' +
-      "decompress('" + name + "')\r\n";
-
-    this.pyboard.exec_(command, function(err, content) {
-      cb(content);
-    }, 40000);
+    this.decompressAsync(name)
+      .then(result => {
+        if (cb) cb(null, result);
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async decompressAsync(name) {
@@ -103,7 +90,7 @@ export default class Shell {
       '  del(c)\r\n' +
       "decompress('" + name + "')\r\n";
 
-    await this.pyboard.xxSendWait(command, null, 40000);
+    return await this.pyboard.xxSendWait(command, null, 40000);
   }
 
   compress(filepath, name, cb) {
@@ -297,13 +284,13 @@ export default class Shell {
   }
 
   createDir(name, cb) {
-    let _this = this;
-    let command =
-      'import os\r\n' +
-      "os.mkdir('" + name + "')\r\n";
-    _this.eval(command, function(err, content) {
-      cb(err, content);
-    });
+    this.createDir(name)
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async createDirAsync(name) {
@@ -311,16 +298,6 @@ export default class Shell {
       'import os\r\n' +
       "os.mkdir('" + name + "')\r\n";
     await this.pyboard.xxSendWait(command);
-  }
-
-  changeDir(name, cb) {
-    let _this = this;
-    let command =
-      'import os\r\n' +
-      "os.chdir('" + name + "')\r\n";
-    _this.eval(command, function(err, content) {
-      cb(err, content);
-    });
   }
 
   async changeDirAsync(name) {
@@ -331,13 +308,13 @@ export default class Shell {
   }
 
   removeDir(name, cb) {
-    let _this = this;
-    let command =
-      'import os\r\n' +
-      "os.rmdir('" + name + "')\r\n";
-    _this.eval(command, function(err, content) {
-      cb(err, content);
-    });
+    this.removeDirAsync(name)
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
   async removeDirAsync(name) {
@@ -348,20 +325,13 @@ export default class Shell {
   }
 
   reset(cb) {
-    let _this = this;
-    let command =
-      'import machine\r\n' +
-      'machine.reset()\r\n';
-
-    // Hard reset is as above
-    //this.pyboard.exec_raw_no_reset(command,function(err){
-    this.pyboard.xxSend(command)
-      .then(() => {
-        // Soft reset isn't actually a soft reset; it's just
-        // that the same key combination (Ctrl+D) is used to 
-        // execute the above code in Raw REPL.
-        _this.pyboard.soft_reset_no_follow(cb);
-      });
+    this.resetAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async resetAsync() {
@@ -374,23 +344,25 @@ export default class Shell {
   }
 
   safeboot_restart(cb) {
-    let _this = this;
-    this.pyboard.safe_boot(function() {
-      _this.pyboard.enter_raw_repl_no_reset(cb);
-    }, 4000);
-
+    this.safebootRestartAsync()
+      .then(() => {
+        if (cb) cb();
+      })
+      .catch(err => {
+        if (cb) cb(err);
+      });
   }
 
-  async safebootRestart() {
+  async safebootRestartAsync() {
     await this.pyboard.safebootAsync(4000);
     await this.pyboard.enterRawReplNoResetAsync();
   }
 
   // evaluates command through REPL and returns the resulting feedback
   eval(c, cb, timeout) {
-    this.pyboard.xxSendWait(c, null, timeout)
-      .then(msg => {
-        if (cb) cb(null, msg);
+    this.evalAsync(c, timeout)
+      .then(result => {
+        if (cb) cb(null, result);
       })
       .catch(err => {
         if (cb) cb(err);
@@ -402,37 +374,28 @@ export default class Shell {
   }
 
   exit(cb) {
-    let _this = this;
-    this.stop_working(function() {
-      _this.__clean_close(cb);
+    this.exitAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
   }
 
+  async exitAsync() {
+    await this.stopWorkingAsync();
+    await this._cleanCloseAsync();
+  }
+
   stop_working(cb) {
-    let _this = this;
-    if (this.working) {
-      _this.logger.info('Exiting shell while still working, doing interrupt');
-      let cb_done = false;
-      this.interrupt_cb = function() {
-        cb_done = true;
-        _this.working = false;
-        _this.interrupted = false;
-        _this.interrupt_cb = null;
-        _this.logger.info('Interrupt done, closing');
-        cb();
-      };
-      this.interrupted = true;
-      setTimeout(function() {
-        if (!cb_done) {
-          _this.logger.info('Interrupt timed out, continuing anyway');
-          cb();
-        }
-      }, 1000);
-    }
-    else {
-      _this.logger.info('Not working, continuing closing');
-      cb();
-    }
+    this.stopWorkingAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async stopWorkingAsync() {
@@ -470,33 +433,13 @@ export default class Shell {
   }
 
   __clean_close(cb) {
-    let _this = this;
-    _this.logger.info('Closing shell cleanly');
-
-    let finish = function(err) {
-      _this.logger.info('Closed successfully');
-      if (_this.pyboard.connection.type != 'serial') {
-        _this.pyboard.disconnect_silent();
-      }
-      if (cb) {
-        _this.logger.info('Callbacking outa here');
-        cb(err);
-      }
-      else {
-        _this.logger.info('No callback?!? Ok, whatevs');
-      }
-    };
-
-    if (this.settings.reboot_after_upload) {
-      _this.logger.info('Rebooting after upload');
-      this.reset(finish);
-    }
-    else {
-      this.pyboard.enter_friendly_repl(function(err) {
-        _this.pyboard.send('\r\n');
-        finish(err);
-      });
-    }
+    this._cleanCloseAsync()
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   async _cleanCloseAsync() {
