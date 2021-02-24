@@ -126,13 +126,12 @@ export default class Shell {
       });
   }
 
-  async writeFileAsync(name, file_path, contents, compare_hash, compress,
-    attempts = 0) {
+  async writeFileAsync(name, file_path, contents) {
     let fw = new FileWriter(this, this.pyboard, this.settings, this.api);
     // let hash = '';
     // if (compare_hash)
     //   hash = await this.getHashAsync(file_path);
-    await fw.writeFileContent(name, file_path, contents, attempts);
+    await fw.writeFileContent(name, file_path, contents, 0);
   }
 
   ensureDirectory(fullPath, cb) {
