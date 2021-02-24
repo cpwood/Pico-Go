@@ -1,17 +1,16 @@
 'use babel';
 
 import Logger from '../helpers/logger.js';
-import ShellWorkers from './shell-workers.js';
 import ApiWrapper from '../main/api-wrapper.js';
 import Utils from '../helpers/utils.js';
 import Config from '../config.js';
-import { exec } from 'child_process';
 import path from 'path';
 import FileWriter from './file-writer.js';
 import { createDeflate } from 'zlib';
 import { pipeline } from 'stream';
 import { createReadStream, createWriteStream } from 'fs';
 import { promisify } from 'util';
+import _ from 'lodash';
 
 const pipe = promisify(pipeline);
 
@@ -140,35 +139,12 @@ export default class Shell {
   }
 
   ensureDirectory(fullPath, cb) {
-    if (fullPath == undefined || fullPath == null) {
-      return;
-    }
-
-    let parts = fullPath.split(path.sep);
-    let _this = this;
-
-    // Remove filename
-    parts.pop();
-
-    if (parts.length == 0) {
-      cb();
-      return;
-    }
-
-    let command = 'import os\r\n' +
-      'def ensureFolder(folder):\r\n' +
-      '   try:\r\n' +
-      '     os.mkdir(folder)\r\n' +
-      '   except OSError:\r\n' +
-      '     ...\r\n' +
-      '\r\n';
-
-    for (let i = 1; i <= parts.length; i++) {
-      command += `ensureFolder("${parts.slice(0, i).join('/')}")\r\n`;
-    }
-
-    _this.eval(command, function(err, content) {
-      cb();
+    this.ensureDirectoryAsync(fullPath)
+    .then(() => {
+      if (cb) cb();
+    })
+    .catch(err => {
+      if (cb) cb(err);
     });
   }
 
@@ -250,26 +226,75 @@ export default class Shell {
     };
   }
 
+  async listAsync(root, recursive = false, hash = false) {
+    let toPythonBoolean = (value) => value ? 'True' : 'False';
+    
+    // Based on code by Jos Verlinde:
+    // https://gist.github.com/Josverl/a6f6be74e5193a8145e351ff9439ae3e
+    let command = '# get file and folder information and return this as JSON\r\n' +
+    '# params : folder , traverse subdirectory , output format, gethash\r\n' +
+    '# intended to allow simple processing of files\r\n' +
+    '# jos_verlinde@hotmail.com\r\n' +
+    'import uos as os, json\r\n' +
+    'import uhashlib,ubinascii\r\n' +     
+    '\r\n' +
+    'def listdir(path=".",sub=False,JSON=True,gethash=False):\r\n' +
+    '    #Lists the file information of a folder\r\n' +
+    '    li=[]\r\n' +
+    '    if path==".": #Get current folder name\r\n' +
+    '        path=os.getcwd()\r\n' +
+    '    files = os.listdir(path)\r\n' +
+    '    for file in files:\r\n' +
+    '        #get size of each file \r\n' +
+    '        info = {"Path": path, "Name": file, "Size": 0}\r\n' +
+    '        if path[-1]=="/":\r\n' +
+    '            full = "%s%s" % (path, file)\r\n' +
+    '        else:\r\n' +
+    '            full = "%s/%s" % (path, file)\r\n' +
+    '        subdir = []\r\n' +
+    '        try:\r\n' +
+    '            stat = os.stat(full)\r\n' +
+    '            if stat[0] & 0x4000:  # stat.S_IFDIR\r\n' +
+    '                info["Type"] = "dir"\r\n' +
+    '                #recurse folder(s)\r\n' +
+    '                if sub == True:\r\n' +
+    '                    subdir = listdir(path=full,sub=True,JSON=False)\r\n' +
+    '            else:\r\n' +
+    '                info["Size"] = stat[6]\r\n' +
+    '                info["Type"] = "file"\r\n' +
+    '                if(gethash):\r\n' +
+    '                    with open(full, "rb") as f:\r\n' +
+    '                        h = uhashlib.sha256(f.read())\r\n' +
+    '                        info["Hash"] = ubinascii.hexlify(h.digest())\r\n' +
+    '        except OSError as e:\r\n' +
+    '            info["OSError"] = e.args[0]\r\n' +
+    '            info["Type"] = "OSError"\r\n' +
+    '        info["Fullname"]=full\r\n' +
+    '        li.append(info)\r\n' +
+    '        #recurse folder(s)\r\n' +
+    '        if sub == True: \r\n' +
+    '            li = li + subdir\r\n' +
+    '    if JSON==True:\r\n' +
+    '        return json.dumps(li)\r\n' +
+    '    else: \r\n' +
+    '        return li\r\n' +
+    '\r\n' +
+    `print(listdir("${root}", ${toPythonBoolean(recursive)}, True, ${toPythonBoolean(hash)}))`;
+
+    let raw = await this.pyboard.xxSendWait(command, null, 10000);
+    return JSON.parse(raw);
+  }
+
   // list files on MCU 
   list_files(cb) {
-    let _this = this;
-    let file_list = [''];
-
-    let end = function(err, file_list_2) {
-      // return no error, and the retrieved file_list
-      cb(undefined, file_list);
-    };
-
-    let worker = function(params, callback) {
-      if (_this.interrupted) {
-        _this.interrupt_cb();
-        return;
-      }
-      _this.workers.list_files(params, callback);
-    };
-    // need to determine what the root folder of the board is
-    _this.utils.doRecursively([_this.mcu_root_folder, [''], file_list],
-      worker, end);
+    this.listAsync('/', true, false)
+    .then(result => {
+      let ret = _.map(_.filter(result, x => x.Type == 'file'), x => x.Fullname);
+      if (cb) cb(null, ret);
+    })
+    .catch(err => {
+      if (cb) cb(err);
+    });
   }
 
   removeFile(name, cb) {

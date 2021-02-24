@@ -72,7 +72,7 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 │   ├── pyboard.js                [Phase 1 Complete]
 │   ├── runner.js                 [Phase 1 Complete]
 │   ├── shell-workers.js
-│   ├── shell.js                  [In Progress]
+│   ├── shell.js                  [Phase 1 Complete]
 │   └── sync.js
 ├── connections
 │   ├── telnet
