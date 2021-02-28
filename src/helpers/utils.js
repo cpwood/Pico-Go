@@ -129,7 +129,7 @@ export default class Utils {
   }
 
   async ensureDirectoryExistenceAsync(dirname) {
-    if (!await this.exists(dirname)) {
+    if (!await Utils.exists(dirname)) {
       await this.mkDirRecursiveAsync(dirname);
     }
     return true;
@@ -148,10 +148,10 @@ export default class Utils {
 
     let parent = path.join(directory, '..');
 
-    if (parent !== path.join(path.sep) && !await this.exists(parent)) 
+    if (parent !== path.join(path.sep) && !await Utils.exists(parent)) 
       await this.mkDirRecursiveAsync(parent);
 
-    if (!await this.exists(directory)) 
+    if (!await Utils.exists(directory)) 
       await fsp.mkdir(directory);
   }
 

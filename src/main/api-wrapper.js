@@ -196,7 +196,7 @@ export default class ApiWrapper {
       placeHolder: text
     };
 
-    window.showQuickPick(items, option_item).then(function(item) {
+    return window.showQuickPick(items, option_item).then(function(item) {
       if (item) {
         options[item]();
       }
@@ -207,22 +207,9 @@ export default class ApiWrapper {
   }
 
   async confirmAsync(text, options) {
-    let items = [];
-    for (let key in options) {
-      items.push(key);
-    }
-    let option_item = {
+    return await window.showQuickPick(options, {
       placeHolder: text
-    };
-
-    let item = await window.showQuickPick(items, option_item);
-
-    if (item) {
-      options[item]();
-    }
-    else {
-      options['Cancel']();
-    }
+    });
   }
 
   getProjectPath() {

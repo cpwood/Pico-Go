@@ -478,7 +478,7 @@ export default class Pymakr extends EventEmitter {
           _this.setButtonState();
         };
 
-        let onerror = function(err) {
+        let onerror = async function(err) {
           let message = _this.pyboard.getErrorMessage(err.message);
           if (message == '') {
             message = err.message ? err.message : 'Unknown error';
@@ -488,7 +488,7 @@ export default class Pymakr extends EventEmitter {
             if (_this.synchronizing) {
               _this.terminal.writeln('An error occurred: ' + message);
               _this.logger.warning('Synchronizing, stopping sync');
-              _this.syncObj.stop();
+              _this.syncObj.stopAsync();
             }
           }
           else {
@@ -589,10 +589,10 @@ export default class Pymakr extends EventEmitter {
     }
   }
 
-  upload() {
+  async upload() {
     let _this = this;
     if (!this.synchronizing) {
-      this.sync();
+      await this.sync('send');
     }
     else {
       this.stopSync(function() {
@@ -602,7 +602,7 @@ export default class Pymakr extends EventEmitter {
     this.setButtonState();
   }
 
-  uploadFile() {
+  async uploadFile() {
     let file = this.api.getOpenFile();
 
     if (!file.path) {
@@ -610,7 +610,7 @@ export default class Pymakr extends EventEmitter {
     }
     else {
       this.logger.info(file.path);
-      this.sync('send', file.path);
+      await this.sync('send', file.path);
     }
   }
 
@@ -667,7 +667,7 @@ export default class Pymakr extends EventEmitter {
     this.sync('receive');
   }
 
-  sync(type, files) {
+  async sync(type, files) {
     this.logger.info('Sync');
     this.logger.info(type);
     let _this = this;
@@ -680,8 +680,11 @@ export default class Pymakr extends EventEmitter {
       this.synchronizing = true;
       this.synchronize_type = type;
       this.setButtonState();
-      let cb = function(err) {
 
+      // Probably needs to stay as a callback
+      // Not the last thing it does.
+      let cb = function(err) {
+        this.logger.warning('>>> pymakr.cb');
         _this.synchronizing = false;
         _this.setButtonState();
         if (_this.pyboard.type != 'serial') {
@@ -689,14 +692,17 @@ export default class Pymakr extends EventEmitter {
             _this.connect();
           }, 4000);
         }
+        this.logger.warning('<<< pymakr.cb');
       };
 
       if (type == 'receive') {
-        this.syncObj.start_receive(cb);
+        //this.syncObj.start_receive(cb);
+        await this.syncObj.startReceiveAsync(cb);
       }
       else {
         try {
-          this.syncObj.start(cb, files);
+          //this.syncObj.start_send(cb, files);
+          await this.syncObj.startSendAsync(cb, files);
         }
         catch (e) {
           console.log(e);
@@ -736,7 +742,8 @@ export default class Pymakr extends EventEmitter {
     let _this = this;
     _this.logger.info('Stopping upload/download now...');
     if (this.synchronizing) {
-      this.syncObj.stop(function() {
+      this.syncObj.stopAsync()
+      .then(() => {
         _this.synchronizing = false;
         cb();
       });
