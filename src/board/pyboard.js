@@ -325,6 +325,18 @@ export default class Pyboard {
     this.connectAsync(address, callback, onerror, ontimeout, onmessage, raw);
   }
 
+  async reconnectAsync() {
+    let address = this.address;
+    let callback = this.onconnect;
+    let onerror = this.onerror;
+    let ontimeout = this.ontimeout;
+    let onmessage = this.onmessage;
+    let raw = this.type == 'socket';
+
+    await this.disconnectAsync();
+    await this.connectAsync(address, callback, onerror, ontimeout, onmessage, raw);
+  }
+
   async connectAsync(address, callback, onerror, ontimeout, onmessage, raw) {
     this.connecting = true;
     this.onconnect = callback;
@@ -892,14 +904,14 @@ export default class Pyboard {
 */
 
   //====================================
-  async xxSend(command) {
+  async xxSend(command, drain=true) {
     if (this.connection)
-      await this.connection.sendAsync(command);
+      await this.connection.sendAsync(command, drain);
   }
 
   async xxSendWait(command, waitFor = null, timeout = 5000) {
     let _this = this;
-    let result = null;
+    let result = null; 
 
     if (!waitFor)
        waitFor = this.status == RAW_REPL ? '>' : command;

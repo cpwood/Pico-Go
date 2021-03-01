@@ -288,7 +288,7 @@ export default class Sync {
     }
 
     this.choiceTimeout = Date.now();
-  
+
     let options = [
       'Cancel',
       'Yes'
@@ -734,7 +734,8 @@ export default class Sync {
         list.push(filename);
       }
       else {
-        list = list.concat(await this._getFilesRecursiveAsync(filename + '/'));
+        list = list.concat(await this._getFilesRecursiveAsync(filename +
+        '/'));
       }
     }
     return list;

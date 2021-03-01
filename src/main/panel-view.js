@@ -114,7 +114,7 @@ export default class PanelView extends EventEmitter {
       if (runner_busy == undefined) {
         // do nothing
       } else if (runner_busy) {
-        this.setButton('run', 'close', 'Stop');
+        this.setButton('run', 'primitive-square', 'Stop');
       } else {
         this.setButton('run', 'triangle-right', 'Run');
       }

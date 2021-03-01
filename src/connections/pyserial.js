@@ -88,7 +88,10 @@ export default class PySerial {
   }
 
   async disconnectAsync() {
-    await this._stream_close();
+    
+    if (this.stream.isOpen) {
+      await this._stream_close();
+    }
   }
 
   registerListener(cb) {

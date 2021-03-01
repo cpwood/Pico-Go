@@ -85,10 +85,10 @@ export default class ApiWrapper {
     });
   }
 
-  async writeToClipboard(text) {
-    // eslint-disable-next-line no-unused-vars
-    return new Promise((resolve, reject) => {
-      ncp.copy(text, resolve);
+  // It's not happy proimisifying this!
+  writeToClipboard(text){
+    ncp.copy(text,function(){
+      // completed
     });
   }
 

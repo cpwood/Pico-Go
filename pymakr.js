@@ -62,15 +62,15 @@ function activate(context) {
                     });
                     context.subscriptions.push(disposable);
                 
-                    disposable = vscode.commands.registerCommand('pymakr.run', function () {
+                    disposable = vscode.commands.registerCommand('pymakr.run', async function () {
                         terminal.show();
-                        pymakr.run();
+                        await pymakr.runAsync();
                     });
                     context.subscriptions.push(disposable);
                 
-                    disposable = vscode.commands.registerCommand('pymakr.runselection', function () {
+                    disposable = vscode.commands.registerCommand('pymakr.runselection', async function () {
                         terminal.show();
-                        pymakr.runselection();
+                        await pymakr.runSelectionAsync();
                     });
                     context.subscriptions.push(disposable);
 
@@ -86,28 +86,28 @@ function activate(context) {
                     });
                     context.subscriptions.push(disposable);
                 
-                    disposable = vscode.commands.registerCommand('pymakr.download', function () {
+                    disposable = vscode.commands.registerCommand('pymakr.download', async function () {
                         terminal.show();
-                        pymakr.download();
+                        await pymakr.downloadAsync();
                     });
                     context.subscriptions.push(disposable);
 
                     disposable = vscode.commands.registerCommand('pymakr.deleteAllFiles', function () {
                         terminal.show();
 
-                    setTimeout(function() {
-                        pymakr.deleteAllFiles();
+                    setTimeout(async function() {
+                        await pymakr.deleteAllFilesAsync();
                         }, 500);  
                     });
                     context.subscriptions.push(disposable);
                 
-                    disposable = vscode.commands.registerCommand('pymakr.globalSettings', function () {
-                        pymakr.openGlobalSettings();
+                    disposable = vscode.commands.registerCommand('pymakr.globalSettings', async function () {
+                        await pymakr.openGlobalSettingsAsync();
                     });
                     context.subscriptions.push(disposable);
                 
-                    disposable = vscode.commands.registerCommand('pymakr.projectSettings', function () {
-                        pymakr.openProjectSettings();
+                    disposable = vscode.commands.registerCommand('pymakr.projectSettings', async function () {
+                        await pymakr.openProjectSettingsAsync();
                     });
                     context.subscriptions.push(disposable);
                 
@@ -123,11 +123,11 @@ function activate(context) {
                     // });
                     // context.subscriptions.push(disposable);
                 
-                    disposable = vscode.commands.registerCommand('pymakr.toggleConnect', function () {
-                        if(!pymakr.pyboard.connected){
+                    disposable = vscode.commands.registerCommand('pymakr.toggleConnect', async function () {
+                        if(!pymakr.board.connected){
                             terminal.show();
                         }
-                        pymakr.toggleConnect();
+                        await pymakr.toggleConnectAsync();
                     });
                     context.subscriptions.push(disposable);
                 
@@ -152,9 +152,9 @@ function activate(context) {
                     });
                     context.subscriptions.push(disposable);
 
-                    disposable = vscode.commands.registerCommand('pymakr.extra.getFullVersion', function () {
+                    disposable = vscode.commands.registerCommand('pymakr.extra.getFullVersion', async function () {
                         terminal.show();
-                        pymakr.getFullVersion();
+                        await pymakr.getFullVersionAsync();
                     });
                     context.subscriptions.push(disposable);
                 
@@ -164,21 +164,21 @@ function activate(context) {
                     // });
                     // context.subscriptions.push(disposable);
                 
-                    disposable = vscode.commands.registerCommand('pymakr.extra.getSerial', function () {
+                    disposable = vscode.commands.registerCommand('pymakr.extra.getSerial', async function () {
                         terminal.show();
-                        pymakr.getSerial();
+                        await pymakr.getSerialAsync();
                     });
                     context.subscriptions.push(disposable);
 
-                    disposable = vscode.commands.registerCommand('pymakr.reset.soft', function () {
+                    disposable = vscode.commands.registerCommand('pymakr.reset.soft', async function () {
                         terminal.show();
-                        pymakr.resetSoft();
+                        await pymakr.resetSoftAsync();
                     });
                     context.subscriptions.push(disposable);
                     
-                    disposable = vscode.commands.registerCommand('pymakr.reset.hard', function () {
+                    disposable = vscode.commands.registerCommand('pymakr.reset.hard', async function () {
                         terminal.show();
-                        pymakr.resetHard();
+                        await pymakr.resetHardAsync();
                     });
                     context.subscriptions.push(disposable);
                 }

@@ -10,7 +10,7 @@ If the goal is to evolve Pico-Go and keep it first class, we can't be hampered w
 
 ## Approach
 
-A three-phase approach will be used: the first is all about laying async-await groundwork and the second is about to switching to it.
+A three-phase approach will be used: the first is all about laying async-await groundwork and the second is about switching to it.
 
 It is anticipated that the changes will take up to three months, starting in mid-February 2021.
 
@@ -92,6 +92,6 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 ├── stubs
 │   └── stubs-manager.js          [Awaiting Phase 3]
 ├── config.js                     [No work required]
-└── pymakr.js
+└── pymakr.js                     [Phase 1 in progress]
 
 ```

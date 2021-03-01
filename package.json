@@ -8,6 +8,7 @@
   "repository": "https://github.com/cpwood/Pico-Go",
   "icon": "images/logo.png",
   "license": "SEE LICENSE IN <LICENSE.md>",
+  "xtype":"module",
   "galleryBanner": {
     "color": "#ffffff",
     "theme": "light"

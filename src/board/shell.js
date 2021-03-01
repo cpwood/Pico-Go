@@ -371,7 +371,9 @@ export default class Shell {
       'machine.reset()\r\n';
 
     await this.pyboard.xxSend(command);
-    await this.pyboard.xxSend(this.EOF); // Execute.
+    await this.pyboard.xxSend(this.EOF, false); // Execute.
+    await Utils.sleep(1000);
+    await this.pyboard.reconnectAsync();
   }
 
   safeboot_restart(cb) {
