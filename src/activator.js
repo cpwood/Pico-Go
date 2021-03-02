@@ -2,8 +2,6 @@
 
 import * as vscode from 'vscode';
 import { exec } from 'child-process-promise';
-import os from 'os';
-import _ from 'lodash';
 import path from 'path';
 import SettingsWrapper from './main/settings-wrapper';
 import PanelView from './main/panel-view';
@@ -11,13 +9,8 @@ import Pymakr from './pymakr';
 import Pyboard from './board/pyboard';
 import StubsManager from './stubs/stubs-manager';
 
-const pkg = vscode.extensions.getExtension('chriswood.pico-go').packageJSON;
-
 export default class Activator {
   async activate(context) {
-    if (!this._checkCompatibility())
-      return;
-
     let sw = new SettingsWrapper();
     await sw.initialize();
 
@@ -189,23 +182,6 @@ export default class Activator {
     return v;
   }
 
-  _checkCompatibility() {
-    let isCompatible = false;
-    let item = _.find(pkg.compatibility, x => x.platform == os.platform());
-
-    if (item != null) {
-      isCompatible = _.includes(item.arch, os.arch());
-    }
-
-    if (!isCompatible) {
-      vscode.window.showErrorMessage(
-        `Sorry, Pico-Go isn't compatible with ${this.getOsName()} (${os.arch()}).`
-      );
-    }
-
-    return isCompatible;
-  }
-
   async checkNodeVersion() {
     let result = await exec('node -v');
     return result.stdout.substr(0, 1) == 'v';
@@ -228,24 +204,5 @@ export default class Activator {
         <img src="${imageUrl}" />
     </body>
     </html>`;
-  }
-
-  getOsName() {
-    switch (os.platform()) {
-      case 'win32':
-        return 'Windows';
-      case 'linux':
-        return 'Linux';
-      case 'darwin':
-        return 'macOS';
-      case 'aix':
-        return 'IBM AIX';
-      case 'freebsd':
-        return 'FreeBSD';
-      case 'openbsd':
-        return 'OpenBSD';
-      case 'sunos':
-        return 'SunOS';
-    }
   }
 }

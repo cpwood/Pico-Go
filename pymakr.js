@@ -1,5 +1,9 @@
-let Activator = require('./lib/activator.js').default;
-let vscode = require('vscode');
+const Activator = require('./lib/activator.js').default;
+const vscode = require('vscode');
+const os = require('os');
+const _ = require('lodash');
+const pkg = vscode.extensions.getExtension('chriswood.pico-go').packageJSON;
+
 let view = null;
 
 async function activate(context) {
@@ -14,8 +18,40 @@ function deactivate() {
     view.destroy();
 }
 
+function getOsName() {
+  switch (os.platform()) {
+    case 'win32':
+      return 'Windows';
+    case 'linux':
+      return 'Linux';
+    case 'darwin':
+      return 'macOS';
+    case 'aix':
+      return 'IBM AIX';
+    case 'freebsd':
+      return 'FreeBSD';
+    case 'openbsd':
+      return 'OpenBSD';
+    case 'sunos':
+      return 'SunOS';
+  }
+}
+
 function checkSerialPort() {
   try {
+    let isCompatible = false;
+    let item = _.find(pkg.compatibility, x => x.platform == os.platform());
+
+    if (item != null) {
+      isCompatible = _.includes(item.arch, os.arch());
+    }
+
+    if (!isCompatible) {
+      vscode.window.showErrorMessage(
+        `Sorry, Pico-Go isn't compatible with ${getOsName()} (${os.arch()}).`);
+      return false;
+    }
+
     require('serialport');
     return true;
   }
