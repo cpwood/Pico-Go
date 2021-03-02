@@ -56,9 +56,9 @@ function activate(context) {
                     });
                     context.subscriptions.push(disposable);
                     
-                    disposable = vscode.commands.registerCommand('pymakr.connect', function () {
+                    disposable = vscode.commands.registerCommand('pymakr.connect', async function () {
                         terminal.show();
-                        pymakr.connect();
+                        await pymakr.connect();
                     });
                     context.subscriptions.push(disposable);
                 

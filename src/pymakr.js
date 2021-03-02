@@ -75,11 +75,11 @@ export default class Pymakr extends EventEmitter {
       }
     });
 
-    this.view.on('terminal_click', function() {
+    this.view.on('terminal_click', async function() {
       _this.logger.verbose('Terminal click emitted');
       if (!_this.board.connected && !_this.board.connecting) {
         _this.logger.verbose('Connecting because of terminal click');
-        _this.connect();
+        await _this.connect();
       }
     });
 
@@ -94,11 +94,11 @@ export default class Pymakr extends EventEmitter {
         });
     });
 
-    this.on('auto_connect', function(address) {
+    this.on('auto_connect', async function(address) {
       if (!_this.board.connecting) {
         _this.logger.verbose(
           'Autoconnect event, disconnecting and connecting again');
-        _this.connect(address);
+        await _this.connect(address);
       }
     });
 
@@ -251,23 +251,6 @@ export default class Pymakr extends EventEmitter {
     await this.api.openSettingsAsync();
   }
 
-  // getWifiMac() {
-  //   let _this = this;
-  //   if (!this.board.connected) {
-  //     this.terminal.writeln('Please connect to your device');
-  //     return;
-  //   }
-
-  //   let command =
-  //     "from network import WLAN; from binascii import hexlify; from os import uname; wlan = WLAN(); mac = hexlify(wlan.mac().ap_mac).decode('ascii'); device = uname().sysname;print('WiFi AP SSID: %(device)s-wlan-%(mac)s' % {'device': device, 'mac': mac[len(mac)-4:len(mac)]})";
-  //   _this.board.send_wait_for_blocking(command + '\n\r', command, function(
-  //     err) {
-  //     if (err) {
-  //       _this.logger.error('Failed to send command: ' + command);
-  //     }
-  //   }, 1000);
-  // }
-
   async getSerialAsync() {
     this.terminal.enter();
     let result = await PySerial.listBoardsAsync(this.settings);
@@ -323,8 +306,7 @@ export default class Pymakr extends EventEmitter {
         .synchronize_type);
     }
 
-    connect(address, clickaction) {
-      let _this = this;
+    async connect(address, clickaction) {
       this.logger.info('Connecting...');
       this.logger.info(address);
 
@@ -348,118 +330,109 @@ export default class Pymakr extends EventEmitter {
         return;
       }
 
-      let continueConnect = function() {
-        // stop config observer from triggering again
-        if (_this.board.connected || _this.board.connecting) {
-          _this.logger.info(
-            'Still connected or connecting... disconnecting first');
-          _this.disconnect(function() {
-            _this.continueConnect();
-          });
-        }
-        else {
-          _this.continueConnect();
-        }
-      };
-
-    if (!address && _this.settings.auto_connect) {
-      this.getAutoconnectAddressAsync()
-      .then(r => {
-        this.board.setAddress(r);   
-        continueConnect();
-      });     
+    if (!address && this.settings.auto_connect) {
+      let r = await this.getAutoconnectAddressAsync();
+      this.board.setAddress(r);  
+      address = r;    
     }
     else {
       if (address) {
-        _this.board.setAddress(address);
+        this.board.setAddress(address);
       }
+    }
 
-      continueConnect();
+    // stop config observer from triggering again
+    if (this.board.connected || this.board.connecting) {
+      this.logger.info(
+        'Still connected or connecting... disconnecting first');
+        await this.disconnectAsync();
+    }
+
+    this.board.status = 0;
+    this.outputHidden = false;
+
+    await this.board.refreshConfigAsync();
+
+    let connect_preamble = '';
+
+    if (address == '' || address == null) {
+      if (!this.settings.auto_connect) {
+        this.terminal.writeln(
+          'Address not configured. Please go to the settings to configure a valid address or comport'
+        );
+      }
+    }
+    else {
+      this.terminal.writeln(connect_preamble + 'Connecting to ' +
+        address + '...');      
+        
+        await this.board.connectAsync(
+          address, 
+          this.onConnected.bind(this), 
+          this.onErrored.bind(this), 
+          this.onTimedOut.bind(this), 
+          this.onMessageReceived.bind(this));
     }
   }
 
-  continueConnect() {
+  onConnected(err, address){
     let _this = this;
-    this.board.status = 0;
-    this.outputHidden = false;
-    this.board.refreshConfig(function() {
 
-      let address = _this.board.address;
-      let connect_preamble = '';
-
-      if (address == '' || address == null) {
-        if (!_this.settings.auto_connect) {
-          _this.terminal.writeln(
-            'Address not configured. Please go to the settings to configure a valid address or comport'
-          );
+    if (err) {
+      this.terminal.writeln('Connection error: ' + err);
+    }
+    else {
+      this.api.setConnectionState(address, true, this.view
+        .project_name);
+      this.connection_timer = setInterval(function() {
+        if (_this.board.connected) {
+          _this.api.setConnectionState(address, true, _this
+            .view.project_name);
         }
+        else {
+          clearTimeout(_this.connection_timer);
+        }
+      }, 10000);
+    }
+
+    _this.setButtonState();
+  }
+
+  async onErrored(err) {
+    let message = this.board.getErrorMessage(err.message);
+    if (message == '') {
+      message = err.message ? err.message : 'Unknown error';
+    }
+    if (this.board.connected) {
+      this.logger.warning('An error occurred: ' + message);
+      if (this.synchronizing) {
+        this.terminal.writeln('An error occurred: ' + message);
+        this.logger.warning('Synchronizing, stopping sync');
+        await this.syncObj.stopAsync();
       }
-      else {
-        _this.terminal.writeln(connect_preamble + 'Connecting to ' +
-          address + '...');
+    }
+    else {
+      this.terminal.writeln('> Failed to connect (' + message +
+        '). Click the "Pico Disconnected" button to try again.'
+        );
+      this.setButtonState();
+    }
+  }
 
-        let onconnect = function(err) {
-          if (err) {
-            _this.terminal.writeln('Connection error: ' + err);
-          }
-          else {
-            _this.api.setConnectionState(address, true, _this.view
-              .project_name);
-            _this.connection_timer = setInterval(function() {
-              if (_this.board.connected) {
-                _this.api.setConnectionState(address, true, _this
-                  .view.project_name);
-              }
-              else {
-                clearTimeout(_this.connection_timer);
-              }
-            }, 10000);
-          }
+  // eslint-disable-next-line no-unused-vars
+  onTimedOut(err) {
+    this.board.connected = false;
+    this.terminal.enter();
+    this.terminal.writeln(
+      '> Connection timed out. Click the "Pico Disconnected" button to try again.'
+    );
+    this.setButtonState();
+  }
 
-          _this.setButtonState();
-        };
-
-        let onerror = async function(err) {
-          let message = _this.board.getErrorMessage(err.message);
-          if (message == '') {
-            message = err.message ? err.message : 'Unknown error';
-          }
-          if (_this.board.connected) {
-            _this.logger.warning('An error occurred: ' + message);
-            if (_this.synchronizing) {
-              _this.terminal.writeln('An error occurred: ' + message);
-              _this.logger.warning('Synchronizing, stopping sync');
-              _this.syncObj.stopAsync();
-            }
-          }
-          else {
-            _this.terminal.writeln('> Failed to connect (' + message +
-              '). Click the "Pico Disconnected" button to try again.'
-              );
-            _this.setButtonState();
-          }
-        };
-
-        // eslint-disable-next-line no-unused-vars
-        let ontimeout = function(err) {
-          _this.board.connected = false;
-          _this.terminal.enter();
-          _this.terminal.writeln(
-            '> Connection timed out. Click the "Pico Disconnected" button to try again.'
-          );
-          _this.setButtonState();
-        };
-
-        let onmessage = function(mssg) {
-          if (!_this.synchronizing && !_this.outputHidden) {
-            _this.terminal.write(mssg);
-          }
-        };
-
-        _this.board.connect(address, onconnect, onerror, ontimeout,
-          onmessage);
-      }
-    });
+  onMessageReceived(mssg) {
+    if (!this.synchronizing && !this.outputHidden) {
+      this.terminal.write(mssg);
+    }
   }
 
   disconnect(cb) {
@@ -481,6 +454,12 @@ export default class Pymakr extends EventEmitter {
 
   async disconnectAsync() {
     this.logger.info('Disconnecting...');
+    
+    let showMessage = false;
+
+    if (this.board.connected)
+      showMessage = true;
+
     if (this.board.isConnecting()) {
       this.terminal.writeln('Connection attempt cancelled');
     }
@@ -493,6 +472,9 @@ export default class Pymakr extends EventEmitter {
     this.synchronizing = false;
     this.runner.stop();
     this.setButtonState();
+
+    if (showMessage)
+      this.terminal.writeln('\r\nDisconnected');
   }
 
   async runAsync() {
@@ -627,8 +609,8 @@ export default class Pymakr extends EventEmitter {
         _this.synchronizing = false;
         _this.setButtonState();
         if (_this.board.type != 'serial') {
-          setTimeout(function() {
-            _this.connect();
+          setTimeout(async function() {
+            await _this.connect();
           }, 4000);
         }
       };
@@ -665,10 +647,10 @@ export default class Pymakr extends EventEmitter {
         _this.logger.error('Failed to send command: ' + command);
       }
       else {
-        setTimeout(function() {
+        setTimeout(async function() {
           _this.terminal.enter();
-          _this.disconnect();
-          _this.connect();
+          await _this.disconnectAsync();
+          await _this.connect();
         }, 1000);
       }
     });
@@ -691,7 +673,7 @@ export default class Pymakr extends EventEmitter {
 
       this.terminal.enter();
       await this.disconnectAsync();
-      this.connect();
+      await this.connect();
     }
     catch(err) {
       this.logger.error('Failed to send command: ' + command);
@@ -727,10 +709,10 @@ export default class Pymakr extends EventEmitter {
     await this.disconnectAsync();
   }
 
-  showPanel() {
+  async showPanel() {
     this.view.showPanel();
     this.setButtonState();
-    this.connect();
+    await this.connect();
   }
 
 
@@ -740,7 +722,7 @@ export default class Pymakr extends EventEmitter {
 
 
   async toggleConnectAsync() {
-    this.board.connected ? await this.disconnectAsync() : this.connect();
+    this.board.connected ? await this.disconnectAsync() : await this.connect();
   }
 
   // Returns an object that can be retrieved when package is activated

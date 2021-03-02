@@ -365,7 +365,7 @@ export default class Pyboard {
       this.authorize.run(function(error) {
         if (error) {
           this._disconnected();
-          callback(error);
+          callback(error, this.address);
         }
         else {
           this._onconnect(callback);
@@ -412,7 +412,7 @@ export default class Pyboard {
       this.stop_running_programs(cb);
     }
     else {
-      cb();
+      cb(null, this.address);
     }
     this.startPings(5);
   }
