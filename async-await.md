@@ -88,7 +88,7 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 │   ├── api-wrapper.js            [Phase 1 Complete]
 │   ├── panel-view.js
 │   ├── settings-wrapper.js       [Phase 1 Complete]
-│   └── terminal.js
+│   └── terminal.js               [Phase 1 Complete]
 ├── stubs
 │   └── stubs-manager.js          [Awaiting Phase 3]
 ├── config.js                     [No work required]

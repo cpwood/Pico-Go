@@ -1,7 +1,7 @@
 'use babel';
 
 import * as util from 'util';
-import Socket from 'net';
+import { Socket } from 'net';
 
 export default class PySocket {
 
