@@ -557,7 +557,7 @@ export default class Sync {
   }
 
   stoppedByUser() {
-    this.logger.warning('Sync canceled');
+    this.logger.warning('Sync cancelled');
     if (!this.isStopping) {
       this.isStopping = true;
     }

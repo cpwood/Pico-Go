@@ -439,7 +439,7 @@ export default class Pymakr extends EventEmitter {
     let _this = this;
     this.logger.info('Disconnecting...');
     if (this.board.isConnecting()) {
-      this.terminal.writeln('Connection attempt canceled');
+      this.terminal.writeln('Connection attempt cancelled');
     }
 
     clearInterval(this.connection_timer);
