@@ -323,7 +323,7 @@ export default class Pymakr extends EventEmitter {
 
     let state = this.api.getConnectionState(address);
     let ts = new Date().getTime();
-    if (state && state['project'] != this.view.project_name && state[
+    if (state && state['project'] != this.view.projectName && state[
         'timestamp'] > ts - 11000) {
       this.terminal.writeln(
         "Already connected in another window (project '" +
@@ -384,11 +384,11 @@ export default class Pymakr extends EventEmitter {
     }
     else {
       this.api.setConnectionState(address, true, this.view
-        .project_name);
+        .projectName);
       this.connectionTimer = setInterval(function() {
         if (_this.board.connected) {
           _this.api.setConnectionState(address, true, _this
-            .view.project_name);
+            .view.projectName);
         }
         else {
           clearTimeout(_this.connectionTimer);

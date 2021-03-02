@@ -86,7 +86,7 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 │   └── utils.js                  [Phase 1 Complete]
 ├── main
 │   ├── api-wrapper.js            [Phase 1 Complete]
-│   ├── panel-view.js
+│   ├── panel-view.js             [Phase 1 Complete]
 │   ├── settings-wrapper.js       [Phase 1 Complete]
 │   └── terminal.js               [Phase 1 Complete]
 ├── stubs

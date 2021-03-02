@@ -1,21 +1,20 @@
 'use babel';
 
-var vscode = require('vscode');
+import * as vscode from 'vscode';
 import { StatusBarAlignment, window } from 'vscode';
-
 import Term from './terminal';
 import ApiWrapper from '../main/api-wrapper.js';
 import Logger from '../helpers/logger.js';
-const pkg = require("../../package.json");
+import EventEmitter from 'events';
 
-var EventEmitter = require('events');
+const pkg = vscode.extensions.getExtension('chriswood.pico-go').packageJSON;
 
 export default class PanelView extends EventEmitter {
   constructor(pyboard, settings) {
     super();
-    var _this = this;
+    let _this = this;
     this.settings = settings;
-    this.pyboard = pyboard;
+    this.board = pyboard;
     this.visible = true;
     this.api = new ApiWrapper();
     this.logger = new Logger('PanelView');
@@ -33,35 +32,35 @@ export default class PanelView extends EventEmitter {
 
     this.setTitle('not connected');
     // terminal logic
-    var onTermConnect = function(err) {
+    let onTermConnect = function(err) {
       _this.emit('term-connected', err);
     };
-    
+
     _this.setProjectName(_this.api.getProjectPath());
 
     // create terminal
-    this.terminal = new Term(onTermConnect, this.pyboard, _this.settings);
+    this.terminal = new Term(onTermConnect, this.board, _this.settings);
     this.terminal.setOnMessageListener(function(input) {
       _this.emit('user_input', input);
     });
   }
 
   showQuickPick() {
-    var items = [];
+    let items = [];
 
     let quickPickItems = pkg.contributes.commands;
 
-    for(let qpItem of quickPickItems) {
-      if (qpItem.command != "pymakr.listCommands") {
+    for (let qpItem of quickPickItems) {
+      if (qpItem.command != 'pymakr.listCommands') {
         items.push({
           label: qpItem.title,
-          description: "",
+          description: '',
           cmd: qpItem.command
         });
       }
     }
 
-    var options = {
+    let options = {
       placeHolder: 'Select Action'
     };
 
@@ -78,7 +77,7 @@ export default class PanelView extends EventEmitter {
     if (!this.statusItemPrio) {
       this.statusItemPrio = 15;
     }
-    var statusBarItem = vscode.window.createStatusBarItem(
+    let statusBarItem = vscode.window.createStatusBarItem(
       StatusBarAlignment.Left,
       this.statusItemPrio
     );
@@ -98,39 +97,45 @@ export default class PanelView extends EventEmitter {
 
   setProjectName(project_path) {
     if (project_path && project_path.indexOf('/') > -1) {
-      this.project_name = project_path.split('/').pop();
-    } else {
-      this.project_name = 'No project';
+      this.projectName = project_path.split('/').pop();
+    }
+    else {
+      this.projectName = 'No project';
     }
     this.setButtonState();
   }
 
   // refresh button display based on current status
-  setButtonState(runner_busy, synchronizing, synchronize_type) {
+  setButtonState(runnerBusy, synchronizing, synchronizeType) {
     // if (!this.visible) {
     //   this.setTitle('not connected')
     // }else if(this.pyboard.connected) {
-    if (this.pyboard.connected) {
-      if (runner_busy == undefined) {
+    if (this.board.connected) {
+      if (runnerBusy == undefined) {
         // do nothing
-      } else if (runner_busy) {
+      }
+      else if (runnerBusy) {
         this.setButton('run', 'primitive-square', 'Stop');
-      } else {
+      }
+      else {
         this.setButton('run', 'triangle-right', 'Run');
       }
       if (synchronizing) {
-        if (synchronize_type == 'receive') {
+        if (synchronizeType == 'receive') {
           this.setButton('download', 'close', 'Cancel');
-        } else {
+        }
+        else {
           this.setButton('upload', 'close', 'Cancel');
         }
-      } else {
+      }
+      else {
         this.setButton('upload', 'triangle-up', 'Upload');
         this.setButton('download', 'triangle-down', 'Download');
       }
 
       this.setTitle('connected');
-    } else {
+    }
+    else {
       this.setTitle('not connected');
     }
   }
@@ -140,24 +145,15 @@ export default class PanelView extends EventEmitter {
   }
 
   setTitle(status) {
-    var icon = 'chrome-close';
-    var title = 'Pico Disconnected'
+    let icon = 'chrome-close';
+    let title = 'Pico Disconnected';
 
     if (status == 'connected') {
       icon = 'check';
-      title = 'Pico Connected'
+      title = 'Pico Connected';
     }
-    
+
     this.setButton('status', icon, title);
-  }
-
-  // UI Stuff
-  addPanel() {
-    // not implemented
-  }
-
-  setPanelHeight(height) {
-    // not implemented
   }
 
   hidePanel() {
@@ -174,11 +170,6 @@ export default class PanelView extends EventEmitter {
 
   clearTerminal() {
     this.terminal.clear();
-  }
-
-  // Returns an object that can be retrieved when package is activated
-  serialize() {
-    // not implemented
   }
 
   // Tear down any state and detach
