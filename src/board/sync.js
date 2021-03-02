@@ -336,7 +336,7 @@ export default class Sync {
 
   async receiveCancelAsync() {
     if (this.checkChoiceTimeout()) {
-      this.progress('Canceled');
+      this.progress('Cancelled');
       await this.completeAsync();
     }
   }
