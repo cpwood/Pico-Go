@@ -24,7 +24,7 @@ export default class Activator {
     }
 
     let sm = new StubsManager();
-    sm.updateStubs();
+    await sm.updateStubs();
 
     let pb = new Pyboard(sw);
     let v = new PanelView(pb, sw);
