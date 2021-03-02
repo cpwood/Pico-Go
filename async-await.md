@@ -92,6 +92,6 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 ├── stubs
 │   └── stubs-manager.js          [Awaiting Phase 3]
 ├── config.js                     [No work required]
-└── pymakr.js                     [Phase 1 in progress]
+└── pymakr.js                     [Phase 1 Complete]
 
 ```
