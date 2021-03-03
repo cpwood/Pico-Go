@@ -11,16 +11,16 @@ export default class Runner {
     this.busy = false;
   }
 
-  async toggleAsync() {
+  async toggle() {
     if (this.busy) {
-      await this.stopAsync();
+      await this.stop();
     }
     else {
-      await this.startAsync();
+      await this.start();
     }
   }
 
-  async startAsync() {
+  async start() {
     let currentFile = this._getCurrentFile();
 
     if (currentFile == undefined)
@@ -30,18 +30,18 @@ export default class Runner {
     this.busy = true;
     this.pymakr.view.setButtonState(this.busy);
 
-    await this.pyboard.runAsync(currentFile.content);
+    await this.pyboard.run(currentFile.content);
     this.busy = false;
   }
 
-  async selectionAsync(codeblock, hideMessage = false) {
+  async selection(codeblock, hideMessage = false) {
     codeblock = this._trimcodeblock(codeblock);
     if (!hideMessage)
       this.terminal.writeln('Running selected lines');
     this.busy = true;
 
     try {
-      await this.pyboard.runAsync(codeblock);
+      await this.pyboard.run(codeblock);
       this.busy = false;
     }
     catch(err) {
@@ -49,11 +49,11 @@ export default class Runner {
     }
   }
 
-  async stopAsync() {
+  async stop() {
     if (this.busy) {
-      await this.pyboard.stopRunningProgramsNoFollowAsync();
-      await this.pyboard.flushAsync();
-      await this.pyboard.enterFriendlyReplAsync();
+      await this.pyboard.stopRunningProgramsNoFollow();
+      await this.pyboard.flush();
+      await this.pyboard.enterFriendlyRepl();
       this.terminal.enter();
       this.terminal.write('>>> ');
       this.busy = false;

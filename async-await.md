@@ -16,12 +16,12 @@ It is anticipated that the changes will take up to three months, starting in mid
 
 ### Phase 1
 
-* For each `method(cb)` , add a `methodAsync()` ;
-* Make `method(cb)` call `methodAsync()` (using `then` and `catch`) instead of doing the work directly. For example:
+* For each `method(cb)` , add a `method()` ;
+* Make `method(cb)` call `method()` (using `then` and `catch`) instead of doing the work directly. For example:
 
 ```js
   send(msg, cb) {
-    this.sendAsync(msg, cb != undefined)
+    this.send(msg, cb != undefined)
       .then(() => {
         if (cb) cb();
       })
@@ -30,9 +30,9 @@ It is anticipated that the changes will take up to three months, starting in mid
       });
   }
 
-  async sendAsync(msg, drain = true) {
+  async send(msg, drain = true) {
     let data = Buffer.from(msg, 'binary');
-    await this.sendRawAsync(data, drain);
+    await this.sendRaw(data, drain);
   }
 ```
 

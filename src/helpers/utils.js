@@ -63,26 +63,26 @@ export default class Utils {
     return text + (number == 1 ? '' : 's');
   }
 
-  async ensureFileDirectoryExistenceAsync(filePath) {
+  async ensureFileDirectoryExistence(filePath) {
     let dirname = path.dirname(filePath);
-    return await this.ensureDirectoryExistenceAsync(dirname);
+    return await this.ensureDirectoryExistence(dirname);
   }
 
-  async ensureDirectoryExistenceAsync(dirname) {
+  async ensureDirectoryExistence(dirname) {
     if (!await Utils.exists(dirname)) {
-      await this.mkDirRecursiveAsync(dirname);
+      await this.mkDirRecursive(dirname);
     }
     return true;
   }
 
-  async mkDirRecursiveAsync(directory) {
+  async mkDirRecursive(directory) {
     if (!path.isAbsolute(directory)) 
       return;
 
     let parent = path.join(directory, '..');
 
     if (parent !== path.join(path.sep) && !await Utils.exists(parent)) 
-      await this.mkDirRecursiveAsync(parent);
+      await this.mkDirRecursive(parent);
 
     if (!await Utils.exists(directory)) 
       await fsp.mkdir(directory);
@@ -117,7 +117,7 @@ export default class Utils {
     return newList;
   }
 
-  async rmdirAsync(path) {
+  async rmdir(path) {
     await this._rimraf(path);
   }
 

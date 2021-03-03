@@ -39,7 +39,7 @@ export default class PySerial {
     this.dtrSupported = ['darwin'].indexOf(process.platform) > -1;
   }
 
-  async connectAsync(onconnect, onerror, ontimeout) {
+  async connect(onconnect, onerror, ontimeout) {
     let _this = this;
     let isErrorThrown = false;
 
@@ -47,7 +47,7 @@ export default class PySerial {
       if (!isErrorThrown) {
         isErrorThrown = true;
         ontimeout(new Error('Timeout while connecting'));
-        await _this.disconnectAsync();
+        await _this.disconnect();
       }
     }, _this.params.timeout);
 
@@ -62,16 +62,16 @@ export default class PySerial {
     });
 
     await this._stream_open();
-    await this.sendPingAsync();
+    await this.sendPing();
 
     // Got this far, so clear the timeout
     clearTimeout(timeout);
 
-    await this.sendAsync('\r\n');
+    await this.send('\r\n');
     onconnect();
   }
 
-  async disconnectAsync() {
+  async disconnect() {
     if (this.stream.isOpen) {
       await this._stream_close();
     }
@@ -87,7 +87,7 @@ export default class PySerial {
     });
   }
 
-  async sendAsync(mssg, drain = true) {
+  async send(mssg, drain = true) {
     let data = Buffer.from(mssg, 'binary');
 
     await this._stream_write(data);
@@ -96,7 +96,7 @@ export default class PySerial {
       await this._stream_drain();
   }
 
-  static async isSerialPortAsync(name) {
+  static async isSerialPort(name) {
     if (name && (name.substr(0, 3) == 'COM' || name.indexOf('tty') > -1 ||
         name.indexOf('/dev') > -1)) {
       return true;
@@ -112,15 +112,15 @@ export default class PySerial {
     }
   }
 
-  static async listTargetBoardsAsync(settings) {
+  static async listTargetBoards(settings) {
     // returns { names: [], manus: [] }
     let names = [];
     let manus = [];
 
-    await settings.refreshAsync();
+    await settings.refresh();
 
     let manufacturers = settings.autoconnect_comport_manufacturers;
-    let listResult = await PySerial.listBoardsAsync(settings);
+    let listResult = await PySerial.listBoards(settings);
 
     for (let i = 0; i < listResult.names.length; i++) {
       let name = listResult.names[i];
@@ -137,7 +137,7 @@ export default class PySerial {
     };
   }
 
-  static async listBoardsAsync(settings) {
+  static async listBoards(settings) {
     // returns { names: [], manus: [] }
     let targetManufacturers = settings.autoconnect_comport_manufacturers;
     let ports = await SerialPort.list();
@@ -184,7 +184,7 @@ export default class PySerial {
     };
   }
 
-  async sendPingAsync() {
+  async sendPing() {
     if (process.platform == 'win32') {
       // avoid MCU waiting in bootloader on hardware restart by setting both dtr and rts high
       await this._stream_set({
@@ -200,7 +200,7 @@ export default class PySerial {
     }
   }
 
-  async flushAsync() {
+  async flush() {
     return await this._stream_flush();
   }
 }

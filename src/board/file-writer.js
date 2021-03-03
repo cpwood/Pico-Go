@@ -52,7 +52,7 @@ export default class FileWriter {
     if (boardPath == undefined) 
       boardPath = `/${name}`;
 
-    await this.shell.ensureDirectoryAsync(boardPath);
+    await this.shell.ensureDirectory(boardPath);
     await this._openFile(boardPath);
 
     try {
@@ -118,7 +118,7 @@ export default class FileWriter {
       (err.message.indexOf('Not enough memory') > -1 || err.message.indexOf(
         'OSError:') > -1)) {
 
-      this.board.safeBootAsync();
+      this.board.safeBoot();
     }
   }
 

@@ -10,14 +10,14 @@ export default class Authorize {
     this.receivedLoginAs = false;
   }
 
-  async runAsync() {
+  async run() {
     let pyboard = this.board;
     this.running = true;
 
     try {
       if (pyboard.connection.type == 'telnet') {
         await new Promise((resolve, reject) => {
-          pyboard.waitForBlockingAsync('Login as:', { resolve: resolve,
+          pyboard.waitForBlocking('Login as:', { resolve: resolve,
             reject: reject }, 7000);
         });
 

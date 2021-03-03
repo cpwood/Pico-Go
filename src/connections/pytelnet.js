@@ -27,13 +27,13 @@ export default class PyTelnet {
     this._stream_write = util.promisify(stream.write).bind(stream);
   }
 
-  async sendPingAsync() {
+  async sendPing() {
     if (this.aytPending) {
       this.aytPending = false;
       throw new Error('Ping failed');
     }
     this.aytPending = true;
-    await this.sendAsync(AYT);
+    await this.send(AYT);
     return true;
   }
 
@@ -74,11 +74,11 @@ export default class PyTelnet {
   }
 
   disconnect(cb) {
-    this.disconnectAsync()
+    this.disconnect()
       .then(cb);
   }
 
-  async disconnectAsync() {
+  async disconnect() {
     this.stream.close();
     // give the connection time to close.
     // there is no proper callback for this in the telnet lib.
@@ -99,20 +99,20 @@ export default class PyTelnet {
     });
   }
 
-  async sendAsync(msg) {
+  async send(msg) {
     let data = Buffer.from(msg, 'binary');
-    await this._sendRawAsync(data);
+    await this._sendRaw(data);
   }
 
-  async _sendRawAsync(data) {
+  async _sendRaw(data) {
     await this._stream_write(data);
   }
 
-  async sendCmdAsync(cmd) {
+  async sendCmd(cmd) {
     let mssg = '\x1b\x1b' + cmd;
     let data = Buffer.from(mssg, 'binary');
-    await this._sendRawAsync(data);
+    await this._sendRaw(data);
   }
 
-  async flushAsync() {}
+  async flush() {}
 }

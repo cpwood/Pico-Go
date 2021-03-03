@@ -20,12 +20,12 @@ export default class ProjectStatus {
     this.changed = false;
 
     let _this = this;
-    this._getLocalFilesHashedAsync()
+    this._getLocalFilesHashed()
       .then(hashes => _this.localFileHashes = hashes);
   }
 
-  async readAsync() {
-    let result = await this.shell.readFileAsync('project.pymakr');
+  async read() {
+    let result = await this.shell.readFile('project.pymakr');
 
     let json = [];
 
@@ -38,14 +38,14 @@ export default class ProjectStatus {
     return json;
   }
 
-  async writeAsync() {
+  async write() {
     try {
       if (this.changed) {
         this.logger.info('Writing project status file to board');
         let boardHashArray = Object.values(this.boardFileHashes);
         let projectFileContent = Buffer.from(JSON.stringify(
           boardHashArray));
-        await this.shell.writeFileAsync('project.pymakr', null,
+        await this.shell.writeFile('project.pymakr', null,
           projectFileContent);
       }
       else {
@@ -79,14 +79,14 @@ export default class ProjectStatus {
     return fs.readdirSync(dir);
   }
 
-  async _getLocalFilesAsync(dir) {
+  async _getLocalFiles(dir) {
     return await fsp.readdir(dir);
   }
 
-  async _getLocalFilesHashedAsync(files, path) {
+  async _getLocalFilesHashed(files, path) {
     if (!files) {
       try {
-        files = await this._getLocalFilesAsync(this.localFolder);
+        files = await this._getLocalFiles(this.localFolder);
       }
       catch (e) {
         this.logger.error("Couldn't locate file folder");
@@ -111,12 +111,12 @@ export default class ProjectStatus {
         }
         if (isDir) {
           try {
-            let filesFromFolder = await this._getLocalFilesAsync(filePath);
+            let filesFromFolder = await this._getLocalFiles(filePath);
             if (filesFromFolder.length > 0) {
               let hash = crypto.createHash('sha256').update(filename).digest(
                 'hex');
               fileHashes[filename] = [filename, 'd', hash];
-              let hashes_in_folder = await this._getLocalFilesHashedAsync(
+              let hashes_in_folder = await this._getLocalFilesHashed(
                 filesFromFolder, filename + '/');
               fileHashes = Object.assign(fileHashes, hashes_in_folder);
             }
@@ -137,7 +137,7 @@ export default class ProjectStatus {
     return fileHashes;
   }
 
-  async prepareFileAsync(py_folder, file_path) {
+  async prepareFile(py_folder, file_path) {
     let contents = await fsp.readFile(file_path);
     let stats = await fsp.lstat(file_path);
     let hash = crypto.createHash('sha256').update(contents).digest('hex');

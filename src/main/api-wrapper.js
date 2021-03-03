@@ -30,18 +30,18 @@ export default class ApiWrapper {
     }
   }
 
-  async openSettingsAsync() {
+  async openSettings() {
     if (!this.configFile) {
       throw new Error('No config file found');
     }
 
-    if (!await this.settingsExistAsync()) {
+    if (!await this.settingsExist()) {
       // Create settings file
       let defaultConfig = this.settings.getDefaultGlobalConfig();
       let json = JSON.stringify(defaultConfig, null, '\t');
 
       await fsp.writeFile(this.configFile, json);
-      await this.settings.watchConfigFileAsync(this.configFile);
+      await this.settings.watchConfigFile(this.configFile);
     }
 
     let uri = vscode.Uri.file(this.configFile);
@@ -49,7 +49,7 @@ export default class ApiWrapper {
     vscode.window.showTextDocument(textDoc);
   }
 
-  async settingsExistAsync() {
+  async settingsExist() {
     if (this.configFile) {
       return await utils.exists(this.configFile);
     }
@@ -73,8 +73,8 @@ export default class ApiWrapper {
     }
   }
 
-  async getConnectionStateAsync(com) {
-    let state = await this._getConnectionStateContentsAsync();
+  async getConnectionState(com) {
+    let state = await this._getConnectionStateContents();
     if (!state) return state;
     return state[com];
   }
@@ -83,7 +83,7 @@ export default class ApiWrapper {
     return this.getPackagePath();
   }
 
-  async _getConnectionStateContentsAsync() {
+  async _getConnectionStateContents() {
     let folder = this._getConnectionStatePath();
     try {
       return JSON.parse(await fsp.readFile(folder + this
@@ -95,10 +95,10 @@ export default class ApiWrapper {
     }
   }
 
-  async setConnectionStateAsync(com, state, project_name) {
+  async setConnectionState(com, state, project_name) {
     let folder = this._getConnectionStatePath();
     let timestamp = new Date().getTime();
-    let stateObject = await this._getConnectionStateContentsAsync();
+    let stateObject = await this._getConnectionStateContents();
 
     if (state) {
       stateObject[com] = { timestamp: timestamp, project: project_name };
@@ -115,7 +115,7 @@ export default class ApiWrapper {
     window.showErrorMessage(text);
   }
 
-  async confirmAsync(text, options) {
+  async confirm(text, options) {
     return await window.showQuickPick(options, {
       placeHolder: text
     });
@@ -138,7 +138,7 @@ export default class ApiWrapper {
     return null;
   }
 
-  async openFileAsync(filename) {
+  async openFile(filename) {
     let uri = vscode.Uri.file(filename);
     let textDoc = await workspace.openTextDocument(uri);
     vscode.window.showTextDocument(textDoc);

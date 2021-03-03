@@ -171,6 +171,6 @@ export default class PanelView extends EventEmitter {
 
   // Tear down any state and detach
   async destroy() {
-    await this.disconnectAsync();
+    await this.disconnect();
   }
 }

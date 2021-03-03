@@ -43,14 +43,14 @@ export default class SettingsWrapper extends EventEmitter {
       await fsp.writeFile(this.globalConfigFile, JSON.stringify(gc));
     }
 
-    this.globalConfig = await this._readConfigFileAsync(this
+    this.globalConfig = await this._readConfigFile(this
       .globalConfigFile, false);
-    this.projectConfig = await this._readConfigFileAsync(this.projectConfigFile,
+    this.projectConfig = await this._readConfigFile(this.projectConfigFile,
       true);
 
-    await this.refreshAsync();
-    await this.watchConfigFileAsync(this.globalConfigFile);
-    await this.watchConfigFileAsync(this.projectConfigFile);
+    await this.refresh();
+    await this.watchConfigFile(this.globalConfigFile);
+    await this.watchConfigFile(this.projectConfigFile);
 
     this.upload_chunk_size = this._getUploadChunkSize();
   }
@@ -78,7 +78,7 @@ export default class SettingsWrapper extends EventEmitter {
     return size;
   }
 
-  async watchConfigFileAsync(file) {
+  async watchConfigFile(file) {
     if (!file) {
       file = this.globalConfigFile;
     }
@@ -98,7 +98,7 @@ export default class SettingsWrapper extends EventEmitter {
           this.fileChanged[file] = true;
           // give it some time to close
           await Utils.sleep(150);
-          await this.refreshAsync();
+          await this.refresh();
         });
       }
       catch (err) {
@@ -108,14 +108,14 @@ export default class SettingsWrapper extends EventEmitter {
     }
   }
 
-  async refreshAsync() {
-    await this._refreshGlobalConfigAsync();
-    await this._refreshProjectConfigAsync();
+  async refresh() {
+    await this._refreshGlobalConfig();
+    await this._refreshProjectConfig();
   }
 
-  async _refreshGlobalConfigAsync() {
+  async _refreshGlobalConfig() {
     this.logger.info('Refreshing global config');
-    this.globalConfig = await this._readConfigFileAsync(this
+    this.globalConfig = await this._readConfigFile(this
       .globalConfigFile);
 
     this._triggerGlobalChangeWatchers();
@@ -183,7 +183,7 @@ export default class SettingsWrapper extends EventEmitter {
     return types;
   }
 
-  async _checkConfigCompleteAsync(path, contents) {
+  async _checkConfigComplete(path, contents) {
     if (!this._isConfigComplete(contents)) {
       contents = this._completeConfig(contents);
       let json =
@@ -196,7 +196,7 @@ export default class SettingsWrapper extends EventEmitter {
     return null;
   }
 
-  async _readConfigFileAsync(path, checkComplete = false) {
+  async _readConfigFile(path, checkComplete = false) {
     let contents = {};
     try {
       if (await Utils.exists(''+path)) {
@@ -204,8 +204,8 @@ export default class SettingsWrapper extends EventEmitter {
         contents = JSON.parse(contents);
 
         if (checkComplete) {
-          await this._checkConfigCompleteAsync(path, contents);
-          await this.watchConfigFileAsync(path);
+          await this._checkConfigComplete(path, contents);
+          await this.watchConfigFile(path);
         }
       }
     }
@@ -220,14 +220,14 @@ export default class SettingsWrapper extends EventEmitter {
     return contents;
   }
 
-  async _refreshProjectConfigAsync() {
+  async _refreshProjectConfig() {
     this.logger.info('Refreshing project config');
     this.projectConfig = {};
     this.projectPath = this.api.getProjectPath();
     this.projectConfigFile = this.projectPath + '/pymakr.conf';
 
     try {
-      let contents = await this._readConfigFileAsync(this.projectConfigFile);
+      let contents = await this._readConfigFile(this.projectConfigFile);
       if (contents) {
         this.logger.silly('Found contents');
         this.projectConfig = contents;
@@ -318,13 +318,13 @@ export default class SettingsWrapper extends EventEmitter {
     return config;
   }
 
-  async openProjectSettingsAsync() {
+  async openProjectSettings() {
     if (this.getProjectPath()) {
       if (!await Utils.exists(this.projectConfigFile)) {
         let json = this._newProjectSettingsJson();
 
         await fsp.writeFile(this.projectConfigFile, json);
-        await this.watchConfigFileAsync(this.projectConfigFile);
+        await this.watchConfigFile(this.projectConfigFile);
       }
 
       let uri = vscode.Uri.file(this.projectConfigFile);

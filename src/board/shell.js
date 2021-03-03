@@ -31,16 +31,16 @@ export default class Shell {
     this.interrupted = false;
   }
 
-  async initialiseAsync() {
+  async initialise() {
     this.logger.silly('Try to enter raw mode');
 
     // 3 = RAW_REPL
     if (this.pyboard.status != 3) {
-      await this.pyboard.enterRawReplNoResetAsync();
+      await this.pyboard.enterRawReplNoReset();
     }
   }
 
-  async getFreeSpaceAsync() {
+  async getFreeSpace() {
     let command =
       'import os, sys\r\n' +
       "_s = os.statvfs('" + this.mcuRootFolder + "')\r\n" +
@@ -50,7 +50,7 @@ export default class Shell {
     return await this.pyboard.sendWait(command);
   }
 
-  async decompressAsync(name) {
+  async decompress(name) {
     let command =
       'import uzlib\r\n' +
       'def decompress(name):\r\n' +
@@ -64,7 +64,7 @@ export default class Shell {
     return await this.pyboard.sendWait(command, null, 40000);
   }
 
-  async compressAsync(filepath, name) {
+  async compress(filepath, name) {
     let deflator = createDeflate({
       level: 2
     });
@@ -73,12 +73,12 @@ export default class Shell {
     await pipe(source, deflator, destination);
   }
 
-  async writeFileAsync(name, file_path, contents) {
+  async writeFile(name, file_path, contents) {
     let fw = new FileWriter(this, this.pyboard, this.settings, this.api);
     await fw.writeFileContent(name, file_path, contents, 0);
   }
 
-  async ensureDirectoryAsync(fullPath) {
+  async ensureDirectory(fullPath) {
     if (fullPath == undefined || fullPath == null) {
       return;
     }
@@ -107,7 +107,7 @@ export default class Shell {
     await this.pyboard.sendWait(command, null, 30000);
   }
 
-  async readFileAsync(name) {
+  async readFile(name) {
     this.working = true;
 
     // avoid leaking file handles 
@@ -146,7 +146,7 @@ export default class Shell {
     };
   }
 
-  async listAsync(root, recursive = false, hash = false) {
+  async list(root, recursive = false, hash = false) {
     let toPythonBoolean = (value) => value ? 'True' : 'False';
 
     // Based on code by Jos Verlinde:
@@ -206,7 +206,7 @@ export default class Shell {
     return JSON.parse(raw);
   }
 
-  async removeFileAsync(name) {
+  async removeFile(name) {
     let command =
       'import os\r\n' +
       "os.remove('" + name + "')\r\n";
@@ -214,28 +214,28 @@ export default class Shell {
     await this.pyboard.sendWait(command);
   }
 
-  async createDirAsync(name) {
+  async createDir(name) {
     let command =
       'import os\r\n' +
       "os.mkdir('" + name + "')\r\n";
     await this.pyboard.sendWait(command);
   }
 
-  async changeDirAsync(name) {
+  async changeDir(name) {
     let command =
       'import os\r\n' +
       "os.chdir('" + name + "')\r\n";
     await this.pyboard.sendWait(command);
   }
 
-  async removeDirAsync(name) {
+  async removeDir(name) {
     let command =
       'import os\r\n' +
       "os.rmdir('" + name + "')\r\n";
     await this.pyboard.sendWait(command);
   }
 
-  async resetAsync() {
+  async reset() {
     let command =
       'import machine\r\n' +
       'machine.reset()\r\n';
@@ -243,24 +243,24 @@ export default class Shell {
     await this.pyboard.send(command);
     await this.pyboard.send(this.EOF, false); // Execute.
     await Utils.sleep(1000);
-    await this.pyboard.reconnectAsync();
+    await this.pyboard.reconnect();
   }
 
-  async safebootRestartAsync() {
-    await this.pyboard.safebootAsync(4000);
-    await this.pyboard.enterRawReplNoResetAsync();
+  async safebootRestart() {
+    await this.pyboard.safeboot(4000);
+    await this.pyboard.enterRawReplNoReset();
   }
 
-  async evalAsync(c, timeout) {
+  async eval(c, timeout) {
     return await this.sendWait(c, null, timeout);
   }
 
-  async exitAsync() {
-    await this.stopWorkingAsync();
-    await this._cleanCloseAsync();
+  async exit() {
+    await this.stopWorking();
+    await this._cleanClose();
   }
 
-  async stopWorkingAsync() {
+  async stopWorking() {
     // This is the limit that this can be async-awaitified.
     // Does rely on callbacks to work.
     // eslint-disable-next-line no-unused-vars
@@ -294,23 +294,23 @@ export default class Shell {
     });
   }
 
-  async _cleanCloseAsync() {
+  async _cleanClose() {
     this.logger.info('Closing shell cleanly');
 
     if (this.settings.reboot_after_upload) {
       this.logger.info('Rebooting after upload');
       // No need to await this.
-      this.resetAsync();
+      this.reset();
       return;
     }
 
-    await this.pyboard.enterFriendlyReplAsync();
+    await this.pyboard.enterFriendlyRepl();
     await this.pyboard.send('\r\n');
 
     this.logger.info('Closed successfully');
 
     if (this.pyboard.connection.type != 'serial') {
-      await this.pyboard.disconnectSilentAsync();
+      await this.pyboard.disconnectSilent();
     }
   }
 }

@@ -55,7 +55,7 @@ export default class PySocket {
     });
   }
 
-  async disconnectAsync() {
+  async disconnect() {
     await this._stream_destroy();
     this.stream = null;
   }
@@ -68,7 +68,7 @@ export default class PySocket {
     });
   }
 
-  async sendAsync(msg) {
+  async send(msg) {
     msg = msg.replace('\x1b', '\x1b\x1b');
     let data = Buffer.from(msg, 'binary');
 
@@ -80,9 +80,9 @@ export default class PySocket {
     }
   }
 
-  async sendPingAsync() {
+  async sendPing() {
     return true;
   }
 
-  async flushAsync() {}
+  async flush() {}
 }

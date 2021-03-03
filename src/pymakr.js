@@ -56,10 +56,10 @@ export default class Pymakr extends EventEmitter {
       }
       _this.logger.info('Connected trigger from view');
 
-      this.firstTimeStart = !await this.api.settingsExistAsync();
+      this.firstTimeStart = !await this.api.settingsExist();
       if (this.firstTimeStart) {
         this.firstTimeStart = false;
-        await _this.api.openSettingsAsync();
+        await _this.api.openSettings();
         _this._writeGetStartedText();
       }
 
@@ -68,10 +68,10 @@ export default class Pymakr extends EventEmitter {
         serializedState && !serializedState.visible;
 
       if (!_this.settings.open_on_start || closeTerminal) {
-        await _this._hidePanelAsync();
+        await _this._hidePanel();
       }
       else {
-        await _this._startAutoConnectAsync(true);
+        await _this._startAutoConnect(true);
       }
     });
 
@@ -84,12 +84,12 @@ export default class Pymakr extends EventEmitter {
     });
 
     this.view.on('user_input', function(input) {
-      _this.board.sendUserInputAsync(input)
+      _this.board.sendUserInput(input)
         .catch(async err => {
           if (err && err.message == 'timeout') {
             _this.logger.warning('User input timeout, disconnecting');
             _this.logger.warning(err);
-            await _this.disconnectAsync();
+            await _this.disconnect();
           }
         });
     });
@@ -112,11 +112,11 @@ export default class Pymakr extends EventEmitter {
       new_value) {
       _this.logger.info('auto_connect setting changed to ' + new_value);
       await _this._stopAutoConnect();
-      await _this._startAutoConnectAsync();
+      await _this._startAutoConnect();
     });
   }
 
-  async _startAutoConnectAsync(wait) {
+  async _startAutoConnect(wait) {
     if (this.view.visible) {
       let _this = this;
       this.logger.info('Starting autoconnect interval...');
@@ -124,10 +124,10 @@ export default class Pymakr extends EventEmitter {
       //this.terminal.writeln("AutoConnect enabled, ignoring 'address' setting (see Global Settings)")
       this.terminal.writeln('Searching for boards on serial devices...');
       if (!wait) {
-        await this._setAutoconnectAddressAsync();
+        await this._setAutoconnectAddress();
       }
       this.autoconnectTimer = setInterval(async function() {
-        await _this._setAutoconnectAddressAsync();
+        await _this._setAutoconnectAddress();
       }, 2500);
     }
   }
@@ -143,12 +143,12 @@ export default class Pymakr extends EventEmitter {
     if (previous != this.settings.address && (this.board.connected || this
         .board.connecting)) {
       this.logger.info('Disconnecting from previous autoconnect address');
-      await this.disconnectAsync();
+      await this.disconnect();
     }
   }
 
-  async _setAutoconnectAddressAsync() {
-    let address = await this._getAutoconnectAddressAsync();
+  async _setAutoconnectAddress() {
+    let address = await this._getAutoconnectAddress();
 
     this.logger.silly('Found address: ' + address);
     if (this.autoconnectAddress === undefined && !
@@ -161,7 +161,7 @@ export default class Pymakr extends EventEmitter {
     }
     else if (this.autoconnectAddress && !address) {
       this.autoconnectAddress = null;
-      await this.disconnectAsync();
+      await this.disconnect();
       this.terminal.writeln(
         '\r\nPrevious board is not available anymore');
       this.logger.silly('Previous board is not available anymore');
@@ -176,7 +176,7 @@ export default class Pymakr extends EventEmitter {
     this.autoconnectAddress = address;
   }
 
-  async _getAutoconnectAddressAsync() {
+  async _getAutoconnectAddress() {
     if (!this.settings.auto_connect && (this.settings.manual_com_device &&
         this.settings.manual_com_device.length > 0)) {
       this.logger.silly('Manual COM port or device configured.');
@@ -185,7 +185,7 @@ export default class Pymakr extends EventEmitter {
 
     if (this.settings.auto_connect) {
       this.logger.silly('Autoconnect enabled');
-      let result = await this._getBoardAsync();
+      let result = await this._getBoard();
 
       let current_address = this.board.address;
       if (result.name) {
@@ -214,8 +214,8 @@ export default class Pymakr extends EventEmitter {
     return null;
   }
 
-  async _getBoardAsync() {
-    let result = await PySerial.listTargetBoardsAsync(this.settings);
+  async _getBoard() {
+    let result = await PySerial.listTargetBoards(this.settings);
 
     if (result.names.length > 0) {
       let name = result.names[0];
@@ -235,9 +235,9 @@ export default class Pymakr extends EventEmitter {
     };
   }
 
-  async openProjectSettingsAsync() {
+  async openProjectSettings() {
     try {
-      await this.settings.openProjectSettingsAsync();
+      await this.settings.openProjectSettings();
     }
     catch (err) {
       console.log(err);
@@ -248,13 +248,13 @@ export default class Pymakr extends EventEmitter {
     }
   }
 
-  async openGlobalSettingsAsync() {
-    await this.api.openSettingsAsync();
+  async openGlobalSettings() {
+    await this.api.openSettings();
   }
 
-  async getSerialAsync() {
+  async getSerial() {
     this.terminal.enter();
-    let result = await PySerial.listBoardsAsync(this.settings);
+    let result = await PySerial.listBoards(this.settings);
 
     this.terminal.writeln('Found ' + result.names.length + ' serialport' + (
       result.names.length == 1 ? '' : 's'));
@@ -273,7 +273,7 @@ export default class Pymakr extends EventEmitter {
     this.terminal.writePrompt();
   }
 
-  async getFullVersionAsync() {
+  async getFullVersion() {
     let command =
       'import os; ' +
       'print("\\r\\n"); ' +
@@ -321,7 +321,7 @@ export default class Pymakr extends EventEmitter {
       this.terminal.writeln('AutoConnect: No device available');
     }
 
-    let state = await this.api.getConnectionStateAsync(address);
+    let state = await this.api.getConnectionState(address);
     let ts = new Date().getTime();
     if (state && state['project'] != this.view.projectName && state[
         'timestamp'] > ts - 11000) {
@@ -332,7 +332,7 @@ export default class Pymakr extends EventEmitter {
     }
 
     if (!address && this.settings.auto_connect) {
-      let r = await this._getAutoconnectAddressAsync();
+      let r = await this._getAutoconnectAddress();
       this.board.setAddress(r);
       address = r;
     }
@@ -346,13 +346,13 @@ export default class Pymakr extends EventEmitter {
     if (this.board.connected || this.board.connecting) {
       this.logger.info(
         'Still connected or connecting... disconnecting first');
-      await this.disconnectAsync();
+      await this.disconnect();
     }
 
     this.board.status = 0;
     this.outputHidden = false;
 
-    await this.board.refreshConfigAsync();
+    await this.board.refreshConfig();
 
     let connectPreamble = '';
 
@@ -367,7 +367,7 @@ export default class Pymakr extends EventEmitter {
       this.terminal.writeln(connectPreamble + 'Connecting to ' +
         address + '...');
 
-      await this.board.connectAsync(
+      await this.board.connect(
         address,
         this._onConnected.bind(this),
         this._onErrored.bind(this),
@@ -383,11 +383,11 @@ export default class Pymakr extends EventEmitter {
       this.terminal.writeln('Connection error: ' + err);
     }
     else {
-      await this.api.setConnectionStateAsync(address, true, this.view
+      await this.api.setConnectionState(address, true, this.view
         .projectName);
       this.connectionTimer = setInterval(async function() {
         if (_this.board.connected) {
-          await _this.api.setConnectionStateAsync(address, true, _this
+          await _this.api.setConnectionState(address, true, _this
             .view.projectName);
         }
         else {
@@ -409,7 +409,7 @@ export default class Pymakr extends EventEmitter {
       if (this.synchronizing) {
         this.terminal.writeln('An error occurred: ' + message);
         this.logger.warning('Synchronizing, stopping sync');
-        await this.syncObj.stopAsync();
+        await this.syncObj.stop();
       }
     }
     else {
@@ -436,7 +436,7 @@ export default class Pymakr extends EventEmitter {
     }
   }
 
-  async disconnectAsync() {
+  async disconnect() {
     this.logger.info('Disconnecting...');
 
     let showMessage = false;
@@ -449,19 +449,19 @@ export default class Pymakr extends EventEmitter {
     }
 
     clearInterval(this.connectionTimer);
-    await this.api.setConnectionStateAsync(this.board.address, false);
+    await this.api.setConnectionState(this.board.address, false);
 
-    await this.board.disconnectAsync();
+    await this.board.disconnect();
 
     this.synchronizing = false;
-    await this.runner.stopAsync();
+    await this.runner.stop();
     this._setButtonState();
 
     if (showMessage)
       this.terminal.writeln('\r\nDisconnected');
   }
 
-  async runAsync() {
+  async run() {
     if (!this.board.connected) {
       this.terminal.writeln('Please connect your device');
       return;
@@ -470,16 +470,16 @@ export default class Pymakr extends EventEmitter {
       let code = this.api.getSelected();
       // if user has selected code, run that instead of the file
       if (code) {
-        await this.runSelectionAsync();
+        await this.runSelection();
       }
       else {
-        await this.runner.toggleAsync();
+        await this.runner.toggle();
         this._setButtonState();
       }
     }
   }
 
-  async runSelectionAsync() {
+  async runSelection() {
     if (!this.board.connected) {
       this.terminal.writeln('Please connect your device');
       return;
@@ -489,7 +489,7 @@ export default class Pymakr extends EventEmitter {
       let code = this.api.getSelectedOrLine();
 
       try {
-        await this.runner.selectionAsync(code);
+        await this.runner.selection(code);
         this.api.editorFocus();
       }
       catch (err) {
@@ -503,7 +503,7 @@ export default class Pymakr extends EventEmitter {
       await this._sync('send');
     }
     else {
-      await this._stopSyncAsync();
+      await this._stopSync();
       this._setButtonState();
     }
     this._setButtonState();
@@ -521,7 +521,7 @@ export default class Pymakr extends EventEmitter {
     }
   }
 
-  async deleteAllFilesAsync() {
+  async deleteAllFiles() {
     this.logger.info('Delete All Files');
 
     if (!this.board.connected) {
@@ -531,7 +531,7 @@ export default class Pymakr extends EventEmitter {
 
     let options = ['Cancel', 'Yes'];
 
-    let choice = await this.api.confirmAsync(
+    let choice = await this.api.confirm(
       'Are you sure you want to delete all files and directories from the board?',
       options);
 
@@ -557,7 +557,7 @@ export default class Pymakr extends EventEmitter {
           "print('\\r\\nAll files and directories have been deleted from the board.\\r\\n')";
 
         try {
-          await this.board.runAsync(command);
+          await this.board.run(command);
           this.api.editorFocus();
         }
         catch (err) {
@@ -568,7 +568,7 @@ export default class Pymakr extends EventEmitter {
     }
   }
 
-  async downloadAsync() {
+  async download() {
     await this._sync('receive');
   }
 
@@ -600,11 +600,11 @@ export default class Pymakr extends EventEmitter {
       };
 
       if (type == 'receive') {
-        await this.syncObj.startReceiveAsync(cb);
+        await this.syncObj.startReceive(cb);
       }
       else {
         try {
-          await this.syncObj.startSendAsync(cb, files);
+          await this.syncObj.startSend(cb, files);
         }
         catch (e) {
           console.log(e);
@@ -613,11 +613,11 @@ export default class Pymakr extends EventEmitter {
     }
   }
 
-  async resetSoftAsync() {
-    this.board.softResetNoFollowAsync();
+  async resetSoft() {
+    this.board.softResetNoFollow();
   }
 
-  async resetHardAsync() {
+  async resetHard() {
     let command = 'import machine\r\nmachine.reset()\r\n';
 
     if (!this.board.connected) {
@@ -632,7 +632,7 @@ export default class Pymakr extends EventEmitter {
       await Utils.sleep(1000);
 
       this.terminal.enter();
-      await this.disconnectAsync();
+      await this.disconnect();
       await this.connect();
     }
     catch (err) {
@@ -640,14 +640,14 @@ export default class Pymakr extends EventEmitter {
     }
   }
 
-  async _stopSyncAsync() {
+  async _stopSync() {
     let _this = this;
     _this.logger.info('Stopping upload/download now...');
     if (this.synchronizing) {
       let type = this.synchronizeType == 'receive' ? 'download' : 'upload';
       this.terminal.writeln('Stopping ' + type + '....');
 
-      await this.syncObj.stopAsync();
+      await this.syncObj.stop();
       this.synchronizing = false;
     }
   }
@@ -658,14 +658,14 @@ export default class Pymakr extends EventEmitter {
     this.terminal.writeln('');
   }
 
-  async _hidePanelAsync() {
+  async _hidePanel() {
     this.view.hidePanel();
     this.logger.verbose('Hiding pannel + disconnect');
-    await this.disconnectAsync();
+    await this.disconnect();
   }
 
-  async toggleConnectAsync() {
-    this.board.connected ? await this.disconnectAsync() : await this
+  async toggleConnect() {
+    this.board.connected ? await this.disconnect() : await this
   .connect();
   }
 }

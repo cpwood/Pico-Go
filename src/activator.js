@@ -11,6 +11,7 @@ import StubsManager from './stubs/stubs-manager';
 
 export default class Activator {
   async activate(context) {
+    let _this = this;
     let sw = new SettingsWrapper();
     await sw.initialize();
 
@@ -62,14 +63,14 @@ export default class Activator {
     disposable = vscode.commands.registerCommand('pymakr.run',
       async function() {
         terminal.show();
-        await pymakr.runAsync();
+        await pymakr.run();
       });
     context.subscriptions.push(disposable);
 
     disposable = vscode.commands.registerCommand('pymakr.runselection',
       async function() {
         terminal.show();
-        await pymakr.runSelectionAsync();
+        await pymakr.runSelection();
       });
     context.subscriptions.push(disposable);
 
@@ -89,7 +90,7 @@ export default class Activator {
     disposable = vscode.commands.registerCommand('pymakr.download',
       async function() {
         terminal.show();
-        await pymakr.downloadAsync();
+        await pymakr.download();
       });
     context.subscriptions.push(disposable);
 
@@ -98,26 +99,26 @@ export default class Activator {
         terminal.show();
 
         setTimeout(async function() {
-          await pymakr.deleteAllFilesAsync();
+          await pymakr.deleteAllFiles();
         }, 500);
       });
     context.subscriptions.push(disposable);
 
     disposable = vscode.commands.registerCommand('pymakr.globalSettings',
       async function() {
-        await pymakr.openGlobalSettingsAsync();
+        await pymakr.openGlobalSettings();
       });
     context.subscriptions.push(disposable);
 
     disposable = vscode.commands.registerCommand('pymakr.projectSettings',
       async function() {
-        await pymakr.openProjectSettingsAsync();
+        await pymakr.openProjectSettings();
       });
     context.subscriptions.push(disposable);
 
     disposable = vscode.commands.registerCommand('pymakr.disconnect',
       async function() {
-        await pymakr.disconnectAsync();
+        await pymakr.disconnect();
       });
     context.subscriptions.push(disposable);
 
@@ -126,7 +127,7 @@ export default class Activator {
         if (!pymakr.board.connected) {
           terminal.show();
         }
-        await pymakr.toggleConnectAsync();
+        await pymakr.toggleConnect();
       });
     context.subscriptions.push(disposable);
 
@@ -147,35 +148,35 @@ export default class Activator {
         );
         const imageUrl = panel.webview.asWebviewUri(onDiskPath);
 
-        panel.webview.html = this.getPinMapHtml(imageUrl);
+        panel.webview.html = _this._getPinMapHtml(imageUrl);
       });
     context.subscriptions.push(disposable);
 
     disposable = vscode.commands.registerCommand(
       'pymakr.extra.getFullVersion', async function() {
         terminal.show();
-        await pymakr.getFullVersionAsync();
+        await pymakr.getFullVersion();
       });
     context.subscriptions.push(disposable);
 
     disposable = vscode.commands.registerCommand('pymakr.extra.getSerial',
       async function() {
         terminal.show();
-        await pymakr.getSerialAsync();
+        await pymakr.getSerial();
       });
     context.subscriptions.push(disposable);
 
     disposable = vscode.commands.registerCommand('pymakr.reset.soft',
       async function() {
         terminal.show();
-        await pymakr.resetSoftAsync();
+        await pymakr.resetSoft();
       });
     context.subscriptions.push(disposable);
 
     disposable = vscode.commands.registerCommand('pymakr.reset.hard',
       async function() {
         terminal.show();
-        await pymakr.resetHardAsync();
+        await pymakr.resetHard();
       });
     context.subscriptions.push(disposable);
 

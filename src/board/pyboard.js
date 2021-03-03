@@ -49,8 +49,8 @@ export default class Pyboard {
     this.address = null;
   }
 
-  async refreshConfigAsync() {
-    await this.settings.refreshAsync();
+  async refreshConfig() {
+    await this.settings.refresh();
 
     this.params = {
       port: 23,
@@ -70,7 +70,7 @@ export default class Pyboard {
     let _this = this;
     this.pingTimer = setInterval(async function() {
       try {
-        await _this.connection.sendPingAsync();
+        await _this.connection.sendPing();
         _this.ping_count = 0;
       }
       catch(err) {
@@ -81,7 +81,7 @@ export default class Pyboard {
         _this.ping_count = 0;
         clearInterval(_this.pingTimer);
         _this.ontimeout(new Error('Connection lost'));
-        await _this.disconnectAsync();
+        await _this.disconnect();
       }
     }, interval * 1000);
   }
@@ -103,23 +103,23 @@ export default class Pyboard {
     this.statusListenerCB = cb;
   }
 
-  async enterFriendlyReplAsync() {
+  async enterFriendlyRepl() {
     await this.sendWait(CTRL_B, '\r\n>>>');
     this.setStatus(FRIENDLY_REPL);
   }
 
-  async _enterFriendlyReplWaitAsync() {
+  async _enterFriendlyReplWait() {
     await this.sendWait(CTRL_B,
       'Type "help()" for more information.\r\n>>>');
     this.setStatus(FRIENDLY_REPL);
   }
 
-  async enterFriendlyReplNonBlockingAsync() {
+  async enterFriendlyReplNonBlocking() {
     await this.send(CTRL_B);
     this.setStatus(FRIENDLY_REPL);
   }
 
-  async _softResetAsync(timeout) {
+  async _softReset(timeout) {
     if (!timeout) {
       timeout = 5000;
     }
@@ -128,28 +128,33 @@ export default class Pyboard {
     return await this.sendWait(CTRL_D, wait_for, timeout);
   }
 
-  async safeBootAsync(timeout) {
+  async softResetNoFollow() {
+    this.logger.info('Soft reset no follow');
+    this.send(CTRL_D);
+  }
+
+  async safeBoot(timeout) {
     this.logger.info('Safe boot');
     await this.sendWait(CTRL_F,
       'Type "help()" for more information.\r\n>>>', timeout);
   }
 
-  async _stopRunningProgramsAsync() {
+  async _stopRunningPrograms() {
     await this.sendWait(CTRL_C, '>>>', 5000);
   }
 
-  async stopRunningProgramsDoubleAsync(timeout) {
+  async stopRunningProgramsDouble(timeout) {
     await this.sendWait(CTRL_C + CTRL_C, '>>>', timeout);
   }
 
-  async stopRunningProgramsNoFollowAsync() {
+  async stopRunningProgramsNoFollow() {
     this.logger.info('CTRL-C (nofollow)');
     await this.send(`${CTRL_C}\r\n`);
   }
 
-  async enterRawReplNoResetAsync() {
+  async enterRawReplNoReset() {
     try {
-      await this.flushAsync();
+      await this.flush();
 
       this.logger.info('Entering raw repl');
 
@@ -166,7 +171,7 @@ export default class Pyboard {
     return this.connecting && !this.connected;
   }
 
-  async connectAsync(address, callback, onerror, ontimeout, onmessage, raw) {
+  async connect(address, callback, onerror, ontimeout, onmessage, raw) {
     this.connecting = true;
     this.onconnect = callback;
     this.onmessage = onmessage;
@@ -174,8 +179,8 @@ export default class Pyboard {
     this.onerror = onerror;
     this.address = address;
     this.stopWaitingForSilent();
-    await this.refreshConfigAsync();
-    this.isSerial = await Pyserial.isSerialPortAsync(this.address);
+    await this.refreshConfig();
+    this.isSerial = await Pyserial.isSerialPort(this.address);
 
     if (this.isSerial) {
       this.connection = new Pyserial(this.address, this.params, this
@@ -192,18 +197,18 @@ export default class Pyboard {
 
     if (this.connection.type == 'telnet') {
       try {
-        await this.authorize.runAsync();
+        await this.authorize.run();
         await this._onconnect(callback);
       }
       catch(error) {
-        await this._disconnectedAsync();
+        await this._disconnected();
         callback(error, this.address);
       }
     }
 
     let _this = this;
 
-    await this.connection.connectAsync(
+    await this.connection.connect(
       // onconnect
       async function() {
         _this.connection.registerListener(async function(mssg, raw) {
@@ -215,7 +220,7 @@ export default class Pyboard {
       },
       // onerror
       async function(err) {
-        await _this._disconnectedAsync();
+        await _this._disconnected();
         _this.onerror(err);
       },
       // ontimeout
@@ -223,7 +228,7 @@ export default class Pyboard {
         // Timeout callback only works properly during connect
         // after that it might trigger unneccesarily
         if (_this.isConnecting()) {
-          await _this._disconnectedAsync();
+          await _this._disconnected();
           ontimeout(mssg, raw);
         }
       });
@@ -237,7 +242,7 @@ export default class Pyboard {
     this.connecting = false;
 
     if (this.params.ctrl_c_on_connect && this.type != 'socket') {
-      await this._stopRunningProgramsAsync();
+      await this._stopRunningPrograms();
     }
     else {
       cb(null, this.address);
@@ -245,16 +250,16 @@ export default class Pyboard {
     this._startPings(5);
   }
 
-  async _disconnectedAsync() {
+  async _disconnected() {
     if (this.connection) {
-      await this.connection.disconnectAsync();
+      await this.connection.disconnect();
     }
     this.connecting = false;
     this.connected = false;
     this._stopPings();
   }
 
-  async reconnectAsync() {
+  async reconnect() {
     let address = this.address;
     let callback = this.onconnect;
     let onerror = this.onerror;
@@ -262,8 +267,8 @@ export default class Pyboard {
     let onmessage = this.onmessage;
     let raw = this.type == 'socket';
 
-    await this.disconnectAsync();
-    await this.connectAsync(address, callback, onerror, ontimeout, onmessage, raw);
+    await this.disconnect();
+    await this.connect(address, callback, onerror, ontimeout, onmessage, raw);
   }
 
   _getWaitType() {
@@ -354,10 +359,10 @@ export default class Pyboard {
 
       if (this.receive_buffer.indexOf('Invalid credentials, try again.') > -
         1) {
-        await this._disconnectedAsync();
+        await this._disconnected();
         this.onconnect('Invalid credentials');
         this.stopWaitingForSilent();
-        this.waitForBlockingAsync('Login as:', function() {
+        this.waitForBlocking('Login as:', function() {
           // do nothing
         });
       }
@@ -443,22 +448,22 @@ export default class Pyboard {
     }
   }
 
-  async disconnectAsync() {
-    await this.disconnectSilentAsync();
+  async disconnect() {
+    await this.disconnectSilent();
     this.setStatus(DISCONNECTED);
   }
 
-  async disconnectSilentAsync() {
-    await this._disconnectedAsync();
+  async disconnectSilent() {
+    await this._disconnected();
   }
 
-  async runAsync(code) {
+  async run(code) {
     let alreadyRaw = this.status == RAW_REPL;
 
-    await this._stopRunningProgramsAsync();
+    await this._stopRunningPrograms();
 
     if (!alreadyRaw) {
-      await this.enterRawReplNoResetAsync();
+      await this.enterRawReplNoReset();
     }
 
     // executing code delayed (20ms) to make sure _this.wait_for(">") is executed before execution is complete
@@ -468,13 +473,13 @@ export default class Pyboard {
     let response = await this.sendWait(code);
 
     if (!alreadyRaw) {
-      await this._enterFriendlyReplWaitAsync();
+      await this._enterFriendlyReplWait();
     }
 
     return response;
   }
 
-  async sendUserInputAsync(msg) {
+  async sendUserInput(msg) {
     await this.send(msg);
 
     if (msg == CTRL_A) {
@@ -488,12 +493,12 @@ export default class Pyboard {
     }
   }
 
-  waitForBlockingAsync(wait_for, promise, timeout) {
-    this.waitForAsync(wait_for, promise, timeout);
+  waitForBlocking(wait_for, promise, timeout) {
+    this.waitFor(wait_for, promise, timeout);
     this.wait_for_block = true;
   }
 
-  waitForAsync(wait_for, promise, timeout, clear = true) {
+  waitFor(wait_for, promise, timeout, clear = true) {
     this.wait_for_block = false;
     this.waiting_for = wait_for;
     this.promise = promise;
@@ -523,7 +528,7 @@ export default class Pyboard {
 
   async send(command, drain=true) {
     if (this.connection)
-      await this.connection.sendAsync(command, drain);
+      await this.connection.send(command, drain);
   }
 
   async sendWait(command, waitFor = null, timeout = 5000) {
@@ -544,7 +549,7 @@ export default class Pyboard {
       command += CTRL_D;
 
     let promise = new Promise((resolve, reject) => {
-      this.waitForBlockingAsync(
+      this.waitForBlocking(
         waitFor, {
           resolve: resolve,
           reject: reject
@@ -578,14 +583,14 @@ export default class Pyboard {
     return received;
   }
 
-  async _execRawNoResetAsync(code) {
+  async _execRawNoReset(code) {
     this.logger.verbose('Executing code:' + code);
     return await this.sendWait(code);
   }
 
-  async flushAsync() {
+  async flush() {
     if (this.connection) {
-      await this.connection.flushAsync();
+      await this.connection.flush();
     }
   }
 

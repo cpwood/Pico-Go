@@ -46,7 +46,7 @@ export default class Sync {
       return new Error('No project open');
     }
     // check if project exists
-    if (!await this._existsAsync(this.pyFolder)) {
+    if (!await this._exists(this.pyFolder)) {
       console.log("Py folder doesn't exist");
       return new Error("Unable to find folder '" + this.settings.sync_folder +
         "' in your project. Please add the correct folder in your settings");
@@ -55,7 +55,7 @@ export default class Sync {
     return true;
   }
 
-  async _existsAsync(dir) {
+  async _exists(dir) {
     return await Utils.exists(dir);
   }
 
@@ -138,17 +138,17 @@ export default class Sync {
     }
   }
 
-  async startSendAsync(oncomplete, files) {
-    await this.settings.refreshAsync();
-    await this._startSyncAsync(oncomplete, 'send', files);
+  async startSend(oncomplete, files) {
+    await this.settings.refresh();
+    await this._startSync(oncomplete, 'send', files);
   }
 
-  async startReceiveAsync(oncomplete, files) {
-    await this.settings.refreshAsync();
-    await this._startSyncAsync(oncomplete, 'receive', files);
+  async startReceive(oncomplete, files) {
+    await this.settings.refresh();
+    await this._startSync(oncomplete, 'receive', files);
   }
 
-  async _startSyncAsync(oncomplete, method, files) {
+  async _startSync(oncomplete, method, files) {
     this.logger.info('Start sync method ' + method);
     this.fails = 0;
     this.method = method;
@@ -183,7 +183,7 @@ export default class Sync {
     }
 
     try {
-      await this._safeBootAsync();
+      await this._safeBoot();
       this.logger.info('Safeboot succesful');
     }
     catch (err) {
@@ -196,7 +196,7 @@ export default class Sync {
     this.logger.silly('Start shell');
 
     try {
-      await this._startShellAsync();
+      await this._startShell();
 
       this.inRawMode = true;
 
@@ -219,39 +219,39 @@ export default class Sync {
     }
     catch (err) {
       this.logger.error(err);
-      await this._throwErrorAsync(err);
+      await this._throwError(err);
       this.exit();
       return;
     }
 
     if (this.method == 'receive') {
-      await this._receiveAsync();
+      await this._receive();
     }
     else {
-      await this._sendAsync(files);
+      await this._send(files);
     }
 
     this._syncDone();
   }
 
-  async _receiveAsync() {
+  async _receive() {
     this._progress('Reading files from board');
 
     let fileList = null;
 
     try {
-      fileList = await this.shell.listAsync('.', true, false);
+      fileList = await this.shell.list('.', true, false);
       fileList = _.filter(fileList, x => x.Type == 'file');
       fileList = _.map(fileList, x => x.Fullname.substr(1));
     }
     catch (err) {
       this._progress(
         'Failed to read files from board, canceling file download');
-      await this._throwErrorAsync(err);
+      await this._throwError(err);
       return;
     }
 
-    this.files = await this._getFilesRecursiveAsync(''); // files on PC
+    this.files = await this._getFilesRecursive(''); // files on PC
 
     let newFiles = [];
     let existingFiles = [];
@@ -301,7 +301,7 @@ export default class Sync {
     await Utils.sleep(100);
 
     if (fileList.length == 0) {
-      await this._completeAsync();
+      await this._complete();
       return true;
     }
 
@@ -310,38 +310,38 @@ export default class Sync {
     this._progress(mssg);
     this._progress('(Use the confirmation box at the top of the screen)');
 
-    let chosen = await this.api.confirmAsync(mssg, options);
+    let chosen = await this.api.confirm(mssg, options);
 
     switch (chosen) {
       case 'Cancel':
-        await this._receiveCancelAsync();
+        await this._receiveCancel();
         break;
       case 'Yes':
-        await this._receiveOverwriteAsync(fileList);
+        await this._receiveOverwrite(fileList);
         break;
       case 'Only new files':
-        await this._receiveOnlyNewAsync(newFiles);
+        await this._receiveOnlyNew(newFiles);
         break;
     }
   }
 
   _checkChoiceTimeout() {
     if (Date.now() - this.choiceTimeout > 29000) {
-      this._throwErrorAsync(new Error(
+      this._throwError(new Error(
         'Choice timeout (30 seconds) occurred.'));
       return false;
     }
     return true;
   }
 
-  async _receiveCancelAsync() {
+  async _receiveCancel() {
     if (this._checkChoiceTimeout()) {
       this._progress('Cancelled');
-      await this._completeAsync();
+      await this._complete();
     }
   }
 
-  async _receiveOverwriteAsync(fileList) {
+  async _receiveOverwrite(fileList) {
     if (this._checkChoiceTimeout()) {
       this._progress(
         `Downloading ${fileList.length} ${this.utils.plural('file',fileList.length)}...`
@@ -349,30 +349,30 @@ export default class Sync {
       this.progressFileCount = 0;
       this.numberOfChangedFiles = fileList.length;
 
-      await this._receiveFilesAsync(fileList);
+      await this._receiveFiles(fileList);
 
       this.logger.info('All items received');
       this._progress('All items overwritten');
-      await this._completeAsync();
+      await this._complete();
     }
   }
 
-  async _receiveOnlyNewAsync(newFiles) {
+  async _receiveOnlyNew(newFiles) {
     if (this._checkChoiceTimeout()) {
       this._progress('Downloading ' + newFiles.length + ' files...');
       this.progressFileCount = 0;
       this.numberOfChangedFiles = newFiles.length;
 
-      await this._receiveFilesAsync(newFiles);
+      await this._receiveFiles(newFiles);
 
       this.logger.info('All items received');
       this._progress('All items overwritten');
-      await this._completeAsync();
+      await this._complete();
     }
   }
 
-  async _safeBootAsync() {
-    await this.board.stopRunningProgramsDoubleAsync(500);
+  async _safeBoot() {
+    await this.board.stopRunningProgramsDouble(500);
 
     if (!this.settings.safe_boot_on_upload) {
       this._progress('Not safe booting, disabled in settings');
@@ -385,10 +385,10 @@ export default class Sync {
 
     this.logger.info('Safe booting...');
     this._progress('Safe booting device... (see settings for more info)');
-    await this.board.safeBootAsync(4000);
+    await this.board.safeBoot(4000);
   }
 
-  async _receiveFilesAsync(list) {
+  async _receiveFiles(list) {
     for (let boardName of list) {
       this._progress(`Reading ${boardName}`, true);
 
@@ -396,7 +396,7 @@ export default class Sync {
       let buffer = null;
 
       try {
-        let result = await this.shell.readFileAsync(boardName);
+        let result = await this.shell.readFile(boardName);
         buffer = result.buffer;
       }
       catch (err) {
@@ -406,7 +406,7 @@ export default class Sync {
       }
 
       try {
-        await this.utils.ensureFileDirectoryExistenceAsync(localName);
+        await this.utils.ensureFileDirectoryExistence(localName);
         await fsp.writeFile(localName, buffer);
       }
       catch (e) {
@@ -417,7 +417,7 @@ export default class Sync {
     }
   }
 
-  async _sendAsync(files) {
+  async _send(files) {
     this._progress('Reading file status');
     this.logger.info('Reading pymakr file');
 
@@ -430,7 +430,7 @@ export default class Sync {
     if (files) {
 
       if (!Array.isArray(files)) {
-        files = await this.projectStatus.prepareFileAsync(this.pyFolder,
+        files = await this.projectStatus.prepareFile(this.pyFolder,
           files);
         files = [files];
 
@@ -441,25 +441,25 @@ export default class Sync {
       }
 
       this.numberOfChangedFiles = files.length;
-      await this._writeFilesAsync(files);
+      await this._writeFiles(files);
     }
     else {
       // TODO: this call seems to be there just to drive a log message.. better place for it?
       // otherwise, write changes based on project status file
       try {
-        await this.projectStatus.readAsync();
+        await this.projectStatus.read();
       }
       catch (err) {
         this._progress(
           'Failed to read project status, uploading all files');
       }
 
-      await this._writeChangesAsync();
+      await this._writeChanges();
     }
 
   }
 
-  async _writeChangesAsync() {
+  async _writeChanges() {
     let changes = this.projectStatus.getChanges();
 
     let deletes = changes['delete'];
@@ -477,13 +477,13 @@ export default class Sync {
     if (deletes.length == 0 && changedFiles.length == 0 && changedFolders
       .length == 0) {
       this._progress('No files to upload');
-      await this._completeAsync();
+      await this._complete();
       return;
     }
 
     this.logger.info('Removing files');
 
-    await this._removeFilesRecursiveAsync(deletes);
+    await this._removeFilesRecursive(deletes);
 
     if (!this.isRunning) {
       this._stoppedByUser();
@@ -493,16 +493,16 @@ export default class Sync {
       this.logger.info('Updating project-status file');
     }
 
-    await this.projectStatus.writeAsync();
+    await this.projectStatus.write();
 
-    await this._writeFilesAsync(changedFilesFolders);
+    await this._writeFiles(changedFilesFolders);
   }
 
-  async _writeFilesAsync(files_and_folders) {
+  async _writeFiles(files_and_folders) {
     this.logger.info('Writing changed folders');
 
     try {
-      await this._writeFilesRecursiveAsync(files_and_folders);
+      await this._writeFilesRecursive(files_and_folders);
 
       if (!this.isRunning) {
         this._stoppedByUser();
@@ -510,14 +510,14 @@ export default class Sync {
       }
     }
     catch (err) {
-      await this._throwErrorAsync(err);
+      await this._throwError(err);
       return;
     }
 
     this.logger.info('Writing project file');
 
     try {
-      await this.projectStatus.writeAsync();
+      await this.projectStatus.write();
 
       if (!this.isRunning) {
         this._stoppedByUser();
@@ -525,10 +525,10 @@ export default class Sync {
       }
 
       this.logger.info('Exiting...');
-      await this._completeAsync();
+      await this._complete();
     }
     catch (err) {
-      await this._throwErrorAsync(err);
+      await this._throwError(err);
       return;
     }
   }
@@ -538,7 +538,7 @@ export default class Sync {
     this.isRunning = false;
   }
 
-  async stopAsync() {
+  async stop() {
     this.stopSilent();
 
     if (!this.shell) {
@@ -546,13 +546,13 @@ export default class Sync {
       return;
     }
 
-    await this.shell.stopWorkingAsync();
+    await this.shell.stopWorking();
 
     this.isRunning = false;
 
-    await this.projectStatus.writeAsync();
+    await this.projectStatus.write();
 
-    await this._completeAsync();
+    await this._complete();
     this.board.stopWaitingForSilent();
   }
 
@@ -563,25 +563,25 @@ export default class Sync {
     }
   }
 
-  async _throwErrorAsync(err) {
+  async _throwError(err) {
     let mssg = err ? err : new Error('');
 
     this.logger.warning('Error thrown during sync procedure');
 
-    await this.syncDoneAsync(mssg);
+    await this.syncDone(mssg);
 
     let promise = this.board.stopWaitingForSilent();
 
     if (promise != undefined)
       await promise;
 
-    await this._exitAsync();
-    await this.board.enterFriendlyReplNonBlockingAsync();
+    await this._exit();
+    await this.board.enterFriendlyReplNonBlocking();
   }
 
-  async _completeAsync() {
+  async _complete() {
     try {
-      await this.utils.rmdirAsync(this.projectPath + '/' + this.config
+      await this.utils.rmdir(this.projectPath + '/' + this.config
         .compressed_files_folder);
     }
     catch (e) {
@@ -590,7 +590,7 @@ export default class Sync {
       this.logger.info(e);
     }
 
-    await this._exitAsync();
+    await this._exit();
 
     if (this.oncomplete) {
       this.oncomplete();
@@ -599,7 +599,7 @@ export default class Sync {
     }
   }
 
-  async _removeFilesRecursiveAsync(files, depth) {
+  async _removeFilesRecursive(files, depth) {
     if (!depth)
       depth = 0;
 
@@ -614,7 +614,7 @@ export default class Sync {
         this._progress('Removing dir ' + filename);
 
         try {
-          await this.shell.removeDirAsync(filename);
+          await this.shell.removeDir(filename);
         }
         catch (err) {
           this._progress('Failed to remove dir ' + filename);
@@ -628,13 +628,13 @@ export default class Sync {
         }
 
         files.splice(0, 1);
-        await this._removeFilesRecursiveAsync(files, depth + 1);
+        await this._removeFilesRecursive(files, depth + 1);
       }
       else {
         this._progress('Removing file ' + filename);
 
         try {
-          await this.shell.removeFileAsync(filename);
+          await this.shell.removeFile(filename);
         }
         catch (err) {
           this._progress('Failed to remove file ' + filename);
@@ -648,18 +648,18 @@ export default class Sync {
         }
 
         files.splice(0, 1);
-        await this._removeFilesRecursiveAsync(files, depth + 1);
+        await this._removeFilesRecursive(files, depth + 1);
       }
     }
   }
 
-  async _writeFilesRecursiveAsync(files, depth) {
+  async _writeFilesRecursive(files, depth) {
     if (!depth)
       depth = 0;
 
     if (depth > 0 && depth % 8 == 0) {
       this.logger.info('Updating project-status file');
-      await this.projectStatus.writeAsync();
+      await this.projectStatus.write();
     }
 
     if (files.length == 0) {
@@ -695,7 +695,7 @@ export default class Sync {
           }
 
           files.splice(0, 1);
-          await this._writeFilesRecursiveAsync(files, depth + 1);
+          await this._writeFilesRecursive(files, depth + 1);
         }
         catch (err) {
           this._progress(err.message);
@@ -705,25 +705,25 @@ export default class Sync {
       }
       else {
         this._progress('Creating dir ' + filename);
-        await this.shell.createDirAsync(filename);
+        await this.shell.createDir(filename);
 
         this.projectStatus.update(filename);
         files.splice(0, 1);
-        await this._writeFilesRecursiveAsync(files, depth + 1);
+        await this._writeFilesRecursive(files, depth + 1);
       }
     }
   }
 
-  async _startShellAsync() {
+  async _startShell() {
     this.shell = new Shell(this.board, this.method, this.settings);
-    await this.shell.initialiseAsync();
+    await this.shell.initialise();
   }
 
-  async _getFilesAsync(dir) {
+  async _getFiles(dir) {
     return await fsp.readdir(dir);
   }
 
-  async _getFilesRecursiveAsync(dir) {
+  async _getFilesRecursive(dir) {
     let files = await fsp.readdir(this.pyFolder + dir);
     let list = [];
     for (let i = 0; i < files.length; i++) {
@@ -734,14 +734,14 @@ export default class Sync {
         list.push(filename);
       }
       else {
-        list = list.concat(await this._getFilesRecursiveAsync(filename +
+        list = list.concat(await this._getFilesRecursive(filename +
         '/'));
       }
     }
     return list;
   }
 
-  async _exitAsync() {
-    await this.shell.exitAsync();
+  async _exit() {
+    await this.shell.exit();
   }
 }
