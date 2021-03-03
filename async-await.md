@@ -66,32 +66,32 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 ```
 .
 ├── board
-│   ├── authorize.js              [Phase 1 Complete]
-│   ├── project-status.js         [Phase 1 Complete]
-│   ├── pyboard-error.js          [No work required]
-│   ├── pyboard.js                [Phase 1 Complete]
-│   ├── runner.js                 [Phase 1 Complete]
-│   ├── shell.js                  [Phase 1 Complete]
-│   └── sync.js                   [Phase 2 Complete]
+│   ├── authorize.js              [Phase 3 Complete]
+│   ├── project-status.js         [Phase 3 Complete]
+│   ├── pyboard.js                [Phase 3 Complete]
+│   ├── runner.js                 [Phase 3 Complete]
+│   ├── shell.js                  [Phase 3 Complete]
+│   └── sync.js                   [Phase 3 Complete]
 ├── connections
 │   ├── telnet
 │   │   ├── format.js             [No work required]
 │   │   ├── telnetcli.js          [No work required]
 │   │   └── util-telnet.js        [No work required]
-│   ├── pyserial.js               [Phase 1 Complete]
-│   ├── pysocket.js               [Phase 1 Complete]
-│   └── pytelnet.js               [Phase 1 Complete]
+│   ├── pyserial.js               [Phase 3 Complete]
+│   ├── pysocket.js               [Phase 3 Complete]
+│   └── pytelnet.js               [Phase 3 Complete]
 ├── helpers
-│   ├── logger.js                 [Phase 1 Complete]
-│   └── utils.js                  [Phase 1 Complete]
+│   ├── logger.js                 [Phase 3 Complete]
+│   └── utils.js                  [Phase 3 Complete]
 ├── main
-│   ├── api-wrapper.js            [Phase 1 Complete]
-│   ├── panel-view.js             [Phase 1 Complete]
-│   ├── settings-wrapper.js       [Phase 1 Complete]
-│   └── terminal.js               [Phase 1 Complete]
+│   ├── api-wrapper.js            [Phase 3 Complete]
+│   ├── panel-view.js             [Phase 3 Complete]
+│   ├── settings-wrapper.js       [Phase 3 Complete]
+│   └── terminal.js               [Phase 3 Complete]
 ├── stubs
-│   └── stubs-manager.js          [Awaiting Phase 3]
-├── config.js                     [No work required]
-└── pymakr.js                     [Phase 1 Complete]
+│   └── stubs-manager.js          [Phase 3 Complete]
+├── activator.js                  [Phase 3 Complete]
+├── config.js                     [Phase 3 Complete]
+└── pymakr.js                     [Phase 3 Complete]
 
 ```

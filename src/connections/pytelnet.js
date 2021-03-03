@@ -27,18 +27,6 @@ export default class PyTelnet {
     this._stream_write = util.promisify(stream.write).bind(stream);
   }
 
-  sendPing(cb) {
-    this.sendPingAsync()
-    .then(() => {
-      if (cb) cb();
-      return true;
-    })
-    .catch(err => {
-      if (cb) cb(err);
-      return false;
-    });
-  }
-
   async sendPingAsync() {
     if (this.aytPending) {
       this.aytPending = false;
@@ -111,53 +99,19 @@ export default class PyTelnet {
     });
   }
 
-  send(msg, cb) {
-    this.sendAsync(msg)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
   async sendAsync(msg) {
     let data = Buffer.from(msg, 'binary');
-    await this.sendRawAsync(data);
+    await this._sendRawAsync(data);
   }
 
-  send_raw(data, cb) {
-    this.sendRawAsync(data)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
-  async sendRawAsync(data) {
+  async _sendRawAsync(data) {
     await this._stream_write(data);
-  }
-
-  send_cmd(cmd, cb) {
-    this.sendCmdAsync(cmd)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
   }
 
   async sendCmdAsync(cmd) {
     let mssg = '\x1b\x1b' + cmd;
     let data = Buffer.from(mssg, 'binary');
-    await this.sendRawAsync(data);
-  }
-
-  flush(cb) {
-    cb();
+    await this._sendRawAsync(data);
   }
 
   async flushAsync() {}

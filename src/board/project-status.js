@@ -1,4 +1,5 @@
 'use babel';
+
 import * as fs from 'fs';
 import { promises as fsp } from 'fs';
 import * as crypto from 'crypto';
@@ -16,18 +17,11 @@ export default class ProjectStatus {
     this.allowedFileTypes = this.settings.getAllowedFileTypes();
     this.content = [];
     this.boardFileHashes = {};
-    this.localFileHashes = this.__get_local_files_hashed();
     this.changed = false;
-  }
 
-  read(cb) {
-    this.readAsync()
-      .then(result => {
-        if (cb) cb(null, result);
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
+    let _this = this;
+    this._getLocalFilesHashedAsync()
+      .then(hashes => _this.localFileHashes = hashes);
   }
 
   async readAsync() {
@@ -39,34 +33,9 @@ export default class ProjectStatus {
       json = JSON.parse(result.str);
     }
     this.content = json;
-    this.__process_file();
+    this._processFile();
 
     return json;
-  }
-
-  write_all(cb) {
-    this.writeAllAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
-  async writeAllAsync() {
-    this.boardFileHashes = this.localFileHashes;
-    await this.writeAsync();
-  }
-
-  write(cb) {
-    this.writeAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    }); 
   }
 
   async writeAsync() {
@@ -99,77 +68,19 @@ export default class ProjectStatus {
     }
   }
 
-  remove(filename) {
-    delete this.boardFileHashes[filename];
-  }
-
-  __process_file() {
+  _processFile() {
     for (let i = 0; i < this.content.length; i++) {
       let h = this.content[i];
       this.boardFileHashes[h[0]] = h;
     }
   }
 
-  __get_local_files(dir) {
+  _get_local_files(dir) {
     return fs.readdirSync(dir);
   }
 
   async _getLocalFilesAsync(dir) {
     return await fsp.readdir(dir);
-  }
-
-  __get_local_files_hashed(files, path) {
-    if (!files) {
-      try {
-        files = this.__get_local_files(this.localFolder);
-      }
-      catch (e) {
-        this.logger.error("Couldn't locate file folder");
-        return false;
-      }
-    }
-    if (!path) {
-      path = '';
-    }
-    let file_hashes = {};
-
-    files = this.utils.ignoreFilter(files);
-
-    for (let i = 0; i < files.length; i++) {
-      let filename = path + files[i];
-      if (filename.length > 0 && filename.substring(0, 1) != '.') {
-        let file_path = this.localFolder + filename;
-        let stats = fs.lstatSync(file_path);
-        let is_dir = stats.isDirectory();
-        if (stats.isSymbolicLink()) {
-          is_dir = filename.indexOf('.') == -1;
-        }
-        if (is_dir) {
-          try {
-            let files_from_folder = this.__get_local_files(file_path);
-            if (files_from_folder.length > 0) {
-              let hash = crypto.createHash('sha256').update(filename).digest(
-                'hex');
-              file_hashes[filename] = [filename, 'd', hash];
-              let hashes_in_folder = this.__get_local_files_hashed(
-                files_from_folder, filename + '/');
-              file_hashes = Object.assign(file_hashes, hashes_in_folder);
-            }
-          }
-          catch (e) {
-            this.logger.info('Unable to read from dir ' + file_path);
-            console.log(e);
-          }
-        }
-        else {
-          let contents = fs.readFileSync(file_path);
-          let hash = crypto.createHash('sha256').update(contents).digest(
-            'hex');
-          file_hashes[filename] = [filename, 'f', hash, stats.size];
-        }
-      }
-    }
-    return file_hashes;
   }
 
   async _getLocalFilesHashedAsync(files, path) {
@@ -226,14 +137,6 @@ export default class ProjectStatus {
     return fileHashes;
   }
 
-  prepare_file(py_folder, file_path) {
-    let contents = fs.readFileSync(file_path);
-    let stats = fs.lstatSync(file_path);
-    let hash = crypto.createHash('sha256').update(contents).digest('hex');
-    let filename = file_path.replace(py_folder, '');
-    return [filename, 'f', hash, stats.size];
-  }
-
   async prepareFileAsync(py_folder, file_path) {
     let contents = await fsp.readFile(file_path);
     let stats = await fsp.lstat(file_path);
@@ -242,7 +145,7 @@ export default class ProjectStatus {
     return [filename, 'f', hash, stats.size];
   }
 
-  get_changes() {
+  getChanges() {
     let changedFiles = [];
     let changedFolders = [];
     let deletes = [];

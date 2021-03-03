@@ -91,7 +91,7 @@ export default class FileWriter {
       'import ubinascii\r\n' +
       `f = open('${name}', 'wb')\r\n`;
 
-    await this.board.xxSend(command);
+    await this.board.send(command);
   }
 
   async _writeChunk(counter, content) {
@@ -99,12 +99,12 @@ export default class FileWriter {
     let end = Math.min((counter + 1) * this.BIN_CHUNK_SIZE, content.length);
     let chunk = content.base64Slice(start, end);
 
-    await this.board.xxSend(`f.write(ubinascii.a2b_base64('${chunk}'))\r\n`);
+    await this.board.send(`f.write(ubinascii.a2b_base64('${chunk}'))\r\n`);
   }
 
   async _closeFile() {
     let command = 'f.close()';
-    let data = await this.board.xxSendWait(command);
+    let data = await this.board.sendWait(command);
 
     if (data.indexOf('Traceback: ') > -1 || data.indexOf('Error: ') > -1) {
         let errorMessage = data.slice(data.indexOf('Error: ') + 7, -3);
@@ -131,7 +131,7 @@ export default class FileWriter {
         return false;
 
     // Does the board support hashing?
-    let response = await this.board.xxSendWait('import uhashlib\r\nprint("Done")\r\n');
+    let response = await this.board.sendWait('import uhashlib\r\nprint("Done")\r\n');
     return response.indexOf('Traceback') == -1;
 
   }
@@ -150,7 +150,7 @@ export default class FileWriter {
       '    hash.update(c)\r\n' +
       'sys.stdout.write(ubinascii.hexlify(hash.digest()))\r\n';
 
-    let boardHash = await this.board.xxSendWait(command);
+    let boardHash = await this.board.sendWait(command);
 
     if (localHash != boardHash) {
       this.logger.error(

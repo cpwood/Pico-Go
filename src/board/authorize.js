@@ -4,24 +4,14 @@ import utils from '../helpers/utils.js';
 
 export default class Authorize {
 
-  constructor(pyboard) {
-    this.pyboard = pyboard;
+  constructor(board) {
+    this.board = board;
     this.running = false;
     this.receivedLoginAs = false;
   }
 
-  run(cb) {
-    this.runAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
-  }
-
   async runAsync() {
-    let pyboard = this.pyboard;
+    let pyboard = this.board;
     this.running = true;
 
     try {
@@ -33,13 +23,13 @@ export default class Authorize {
 
         this.receivedLoginAs = true;
 
-        await pyboard.xxSendWait(pyboard.params.username, 'Password:', 7000);
+        await pyboard.sendWait(pyboard.params.username, 'Password:', 7000);
 
         // timeout of 50 ms to be sure the board is ready to receive the password
         // Without this, sometimes connecting via the boards access point fails
         await utils.sleep(50);
 
-        await pyboard.xxSendWait(pyboard.params.password,
+        await pyboard.sendWait(pyboard.params.password,
           'Login succeeded!\r\nType "help()" for more information.\r\n',
           7000);
       }

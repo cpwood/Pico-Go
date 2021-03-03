@@ -14,7 +14,7 @@ export default class Activator {
     let sw = new SettingsWrapper();
     await sw.initialize();
 
-    let nodeInstalled = await this.checkNodeVersion();
+    let nodeInstalled = await this._checkNodeVersion();
 
     if (!nodeInstalled) {
       vscode.window.showErrorMessage(
@@ -116,8 +116,8 @@ export default class Activator {
     context.subscriptions.push(disposable);
 
     disposable = vscode.commands.registerCommand('pymakr.disconnect',
-      function() {
-        pymakr.disconnect();
+      async function() {
+        await pymakr.disconnectAsync();
       });
     context.subscriptions.push(disposable);
 
@@ -182,12 +182,12 @@ export default class Activator {
     return v;
   }
 
-  async checkNodeVersion() {
+  async _checkNodeVersion() {
     let result = await exec('node -v');
     return result.stdout.substr(0, 1) == 'v';
   }
 
-  getPinMapHtml(imageUrl) {
+  _getPinMapHtml(imageUrl) {
     return `<!DOCTYPE html>
     <html lang="en">
     <head>

@@ -1,10 +1,8 @@
 'use babel';
-//const EventEmitter = require('events');
+
 import EventEmitter from 'events';
 import ApiWrapper from './api-wrapper.js';
 import Logger from '../helpers/logger.js';
-//let fs = require('fs');
-//let vscode = require('vscode');
 import * as fs from 'fs';
 import { promises as fsp } from 'fs';
 import * as vscode from 'vscode';
@@ -45,16 +43,16 @@ export default class SettingsWrapper extends EventEmitter {
       await fsp.writeFile(this.globalConfigFile, JSON.stringify(gc));
     }
 
-    this.globalConfig = await this.readConfigFileAsync(this
+    this.globalConfig = await this._readConfigFileAsync(this
       .globalConfigFile, false);
-    this.projectConfig = await this.readConfigFileAsync(this.projectConfigFile,
+    this.projectConfig = await this._readConfigFileAsync(this.projectConfigFile,
       true);
 
     await this.refreshAsync();
     await this.watchConfigFileAsync(this.globalConfigFile);
     await this.watchConfigFileAsync(this.projectConfigFile);
 
-    this.upload_chunk_size = this.get_upload_chunk_size();
+    this.upload_chunk_size = this._getUploadChunkSize();
   }
 
   setFileChangedGlobal() {
@@ -66,32 +64,18 @@ export default class SettingsWrapper extends EventEmitter {
     this.changeWatcher[key] = cb;
   }
 
-  projectChanged() {
-    this.getProjectPath();
-    this.refreshProjectConfig();
-    this.watchConfigFile(this.projectConfigFile);
-  }
-
   getProjectPath() {
     this.projectPath = this.api.getProjectPath();
     this.projectConfigFile = this.projectPath + '/pymakr.conf';
     return this.projectPath;
   }
 
-  registerProjectChangeWatcher(cb) {
-    this.projectChangeCallbacks.push(cb);
-  }
-
-  get_upload_chunk_size() {
+  _getUploadChunkSize() {
     let size = this.constants.upload_batch_size;
     if (this.fast_upload) {
       size = size * this.constants.fast_upload_batch_multiplier;
     }
     return size;
-  }
-
-  watchConfigFile(file) {
-    this.watchConfigFileAsync(file);
   }
 
   async watchConfigFileAsync(file) {
@@ -124,37 +108,17 @@ export default class SettingsWrapper extends EventEmitter {
     }
   }
 
-  refresh(cb) {
-    this.refreshAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
   async refreshAsync() {
-    await this.refreshGlobalConfigAsync();
-    await this.refreshProjectConfigAsync();
+    await this._refreshGlobalConfigAsync();
+    await this._refreshProjectConfigAsync();
   }
 
-  refreshGlobalConfig(cbg) {
-    this.refreshGlobalConfigAsync()
-    .then(() => {
-      if (cbg) cbg();
-    })
-    .catch(err => {
-      if (cbg) cbg(err);
-    });
-  }
-
-  async refreshGlobalConfigAsync() {
+  async _refreshGlobalConfigAsync() {
     this.logger.info('Refreshing global config');
-    this.globalConfig = await this.readConfigFileAsync(this
+    this.globalConfig = await this._readConfigFileAsync(this
       .globalConfigFile);
 
-    this.triggerGlobalChangeWatchers();
+    this._triggerGlobalChangeWatchers();
 
     this.address = '192.168.4.1';
     this.sync_folder = this.api.config('sync_folder');
@@ -175,7 +139,7 @@ export default class SettingsWrapper extends EventEmitter {
       'autoconnect_comport_manufacturers');
 
     this.timeout = 15000;
-    this.setProjectConfig();
+    this._setProjectConfig();
 
     if (this.statusbar_buttons == undefined || this.statusbar_buttons == '') {
       this.statusbar_buttons = ['status', 'connect', 'upload', 'download',
@@ -193,7 +157,7 @@ export default class SettingsWrapper extends EventEmitter {
     // This is where it used to check if it was a serial port or an IP address.
   }
 
-  triggerGlobalChangeWatchers() {
+  _triggerGlobalChangeWatchers() {
     let keys = Object.keys(this.config);
     for (let i = 0; i < keys.length; i++) {
       let k = keys[i];
@@ -219,19 +183,9 @@ export default class SettingsWrapper extends EventEmitter {
     return types;
   }
 
-  checkConfigComplete(path, contents, cb) {
-    this.checkConfigCompleteAsync(path, contents)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
-  }
-
-  async checkConfigCompleteAsync(path, contents) {
-    if (!this.isConfigComplete(contents)) {
-      contents = this.completeConfig(contents);
+  async _checkConfigCompleteAsync(path, contents) {
+    if (!this._isConfigComplete(contents)) {
+      contents = this._completeConfig(contents);
       let json =
         JSON.stringify(contents, null, '\t');
 
@@ -242,26 +196,7 @@ export default class SettingsWrapper extends EventEmitter {
     return null;
   }
 
-  readConfigFileSync(path) {
-    let contents = {};
-    try {
-      if (fs.existsSync(path)) {
-        contents = fs.readFileSync(path, { encoding: 'utf-8' });
-        contents = JSON.parse(contents);
-      }
-    }
-    catch (e) {
-      this.logger.warning('Error processing Config file:' + path);
-      if (e instanceof SyntaxError && this.fileChanged[path]) {
-        this.emit('format_error.project');
-        this.fileChanged[path] = false;
-      }
-      contents = {};
-    }
-    return contents;
-  }
-
-  async readConfigFileAsync(path, checkComplete = false) {
+  async _readConfigFileAsync(path, checkComplete = false) {
     let contents = {};
     try {
       if (await Utils.exists(''+path)) {
@@ -269,7 +204,7 @@ export default class SettingsWrapper extends EventEmitter {
         contents = JSON.parse(contents);
 
         if (checkComplete) {
-          await this.checkConfigCompleteAsync(path, contents);
+          await this._checkConfigCompleteAsync(path, contents);
           await this.watchConfigFileAsync(path);
         }
       }
@@ -285,50 +220,18 @@ export default class SettingsWrapper extends EventEmitter {
     return contents;
   }
 
-  readConfigFile(path, checkComplete, cb) {
-    this.readConfigFileAsync(path, checkComplete)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
-  }
-
-
-  refreshProjectConfig() {
-    this.logger.info('Refreshing project config');
-    let _this = this;
-    this.projectConfig = {};
-    this.projectPath = this.api.getProjectPath();
-    this.projectConfigFile = this.projectPath + '/pymakr.conf';
-
-    try {
-      let contents = this.readConfigFileSync(this.projectConfigFile);
-      if (contents) {
-        this.logger.silly('Found contents');
-        this.projectConfig = contents;
-        _this.setProjectConfig();
-      }
-    }
-    catch (e) {
-      _this.logger.info('No project config present');
-      return null;
-    }
-  }
-
-  async refreshProjectConfigAsync() {
+  async _refreshProjectConfigAsync() {
     this.logger.info('Refreshing project config');
     this.projectConfig = {};
     this.projectPath = this.api.getProjectPath();
     this.projectConfigFile = this.projectPath + '/pymakr.conf';
 
     try {
-      let contents = await this.readConfigFileAsync(this.projectConfigFile);
+      let contents = await this._readConfigFileAsync(this.projectConfigFile);
       if (contents) {
         this.logger.silly('Found contents');
         this.projectConfig = contents;
-        this.setProjectConfig();
+        this._setProjectConfig();
       }
     }
     catch (e) {
@@ -337,7 +240,7 @@ export default class SettingsWrapper extends EventEmitter {
     }
   }
 
-  setProjectConfig() {
+  _setProjectConfig() {
     // these projects settings override the global settings 
     if ('sync_folder' in this.projectConfig) {
       this.sync_folder = this.projectConfig.sync_folder;
@@ -368,12 +271,12 @@ export default class SettingsWrapper extends EventEmitter {
     }
   }
 
-  isConfigComplete(settingsObject) {
+  _isConfigComplete(settingsObject) {
     return Object.keys(settingsObject).length >= Object.keys(this
       .getDefaultGlobalConfig()).length;
   }
 
-  completeConfig(settingsObject) {
+  _completeConfig(settingsObject) {
     let defaultConfig = this.getDefaultGlobalConfig();
     if (Object.keys(settingsObject).length < Object.keys(defaultConfig)
       .length) {
@@ -386,7 +289,7 @@ export default class SettingsWrapper extends EventEmitter {
     return settingsObject;
   }
 
-  getDefaultProjectConfig() {
+  _getDefaultProjectConfig() {
     return this._getDefaultConfig(false);
   }
 
@@ -415,20 +318,10 @@ export default class SettingsWrapper extends EventEmitter {
     return config;
   }
 
-  openProjectSettings(cb) {
-    this.openProjectSettingsAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
-  }
-
   async openProjectSettingsAsync() {
     if (this.getProjectPath()) {
       if (!await Utils.exists(this.projectConfigFile)) {
-        let json = this.newProjectSettingsJson();
+        let json = this._newProjectSettingsJson();
 
         await fsp.writeFile(this.projectConfigFile, json);
         await this.watchConfigFileAsync(this.projectConfigFile);
@@ -443,47 +336,8 @@ export default class SettingsWrapper extends EventEmitter {
     }
   }
 
-  openSettingsFile(filename, cb) {
-    this.openSettingsFileAsync(filename)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
-  }
-
-  async openSettingsFileAsync(filename) {
-    if (!await Utils.exists(filename)) {
-      let json_string = this.newProjectSettingsJson();
-      await this.createSettingsFileAsync(filename, json_string, true);
-    }
-    else {
-      this.api.openFileAsync(filename);
-    }
-  }
-
-  createSettingsFile(filename, contents, cb, open = false) {
-    this.createSettingsFileAsync(filename, contents, open)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
-  }
-
-  async createSettingsFileAsync(filename, contents, open = false) {
-    await fsp.writeFile(filename, contents);
-    await this.watchConfigFileAsync(filename);
-
-    if (open) {
-      await this.api.openFileAsync(filename);
-    }
-  }
-
-  newProjectSettingsJson() {
-    let settings = this.getDefaultProjectConfig();
+  _newProjectSettingsJson() {
+    let settings = this._getDefaultProjectConfig();
     let json = JSON.stringify(settings, null, 4);
     return json;
   }

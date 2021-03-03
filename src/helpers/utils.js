@@ -23,44 +23,6 @@ export default class Utils {
     this._rimraf = util.promisify(rimraf).bind(rimraf);
   }
 
-  // runs a worker recursively until a task is Done
-  // worker should take 2 params: value and a continuation callback
-  // continuation callback takes 2 params: error and the processed value
-  // calls 'end' whenever the processed_value comes back empty/null or when an error is thrown
-  doRecursively(value, worker, end) {
-    let _this = this;
-    try {
-      worker(value, function(err, value_processed, done) {
-        if (err) {
-          end(err);
-        }
-        else if (done) {
-          end(null, value_processed);
-        }
-        else {
-          setTimeout(function() {
-            _this.doRecursively(value_processed, worker, end);
-          }, 20);
-        }
-      });
-    }
-    catch (e) {
-      console.error('Failed to execute worker:');
-      console.error(e);
-      end(e);
-    }
-  }
-
-  async doRecursivelyAsync(value, worker) {
-    let result = await worker(value);
-
-    if (result.done)
-      return result.value;
-
-    await Utils.sleep(20);
-    await this.doRecursivelyAsync2(result.value, worker);
-  }
-
   // vscode
   static getConfigPath(filename) {
     let plf = process.platform;
@@ -101,31 +63,9 @@ export default class Utils {
     return text + (number == 1 ? '' : 's');
   }
 
-  parse_error(content) {
-    let errIndex = content.indexOf('OSError:');
-    if (errIndex > -1) {
-      return Error(content.slice(errIndex, content.length - 2));
-    }
-    else {
-      return null;
-    }
-  }
-
-  ensureFileDirectoryExistence(filePath) {
-    let dirname = path.dirname(filePath);
-    return this.ensureDirectoryExistence(dirname);
-  }
-
   async ensureFileDirectoryExistenceAsync(filePath) {
     let dirname = path.dirname(filePath);
     return await this.ensureDirectoryExistenceAsync(dirname);
-  }
-
-  ensureDirectoryExistence(dirname) {
-    if (!fs.existsSync(dirname)) {
-      this.mkDirRecursive(dirname);
-    }
-    return true;
   }
 
   async ensureDirectoryExistenceAsync(dirname) {
@@ -133,13 +73,6 @@ export default class Utils {
       await this.mkDirRecursiveAsync(dirname);
     }
     return true;
-  }
-
-  mkDirRecursive(directory) {
-    let parent = path.join(directory, '..');
-    if (parent !== path.join(path.sep) && !fs.existsSync(parent)) this
-      .mkDirRecursive(parent);
-    if (!fs.existsSync(directory)) fs.mkdirSync(directory);
   }
 
   async mkDirRecursiveAsync(directory) {
@@ -184,48 +117,8 @@ export default class Utils {
     return newList;
   }
 
-  rmdir(path, cb) {
-    this.rmdirAsync(path)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
-  }
-
   async rmdirAsync(path) {
     await this._rimraf(path);
-  }
-
-  calculateIntVersion(version) {
-    let knownTypes = ['a', 'b', 'rc', 'r'];
-    if (!version) {
-      return 0;
-    }
-    let versionParts = version.split('.');
-    let dots = versionParts.length - 1;
-    if (dots == 2) {
-      versionParts.push('0');
-    }
-
-    for (let i = 0; i < knownTypes.length; i++) {
-      let t = knownTypes[i];
-      if (versionParts[3] && versionParts[3].indexOf(t) > -1) {
-        versionParts[3] = versionParts[3].replace(t, '');
-      }
-    }
-
-    let versionString = '';
-
-    for (let i = 0; i < versionParts.length; i++) {
-      let val = versionParts[i];
-      if (parseInt(val) < 10) {
-        versionParts[i] = '0' + val;
-      }
-      versionString += versionParts[i];
-    }
-    return parseInt(versionString);
   }
 
   // vscode
@@ -249,43 +142,6 @@ export default class Utils {
 
   static normalize(p) {
     return path.normalize(p).replace(/\\/g, '/');
-  }
-
-  _wasFileNotExisting(exception) {
-    let error_list = ['ENOENT', 'ENODEV', 'EINVAL', 'OSError:'];
-    let stre = exception.message;
-    for (let i = 0; i < error_list.length; i++) {
-      if (stre.indexOf(error_list[i]) > -1) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  int16(int) {
-    let b = Buffer.alloc(2);
-    b.writeUInt16BE(int);
-    return b;
-  }
-
-  int32(int) {
-    let b = Buffer.aloc(4);
-    b.writeUInt32BE(int);
-    return b;
-  }
-
-  isIP(address) {
-    let r = RegExp(
-      '^http[s]?:\/\/((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])'
-    );
-    return r.test(address);
-  }
-
-  isIP(address) {
-    let r = RegExp(
-      '^http[s]?:\/\/((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])'
-    );
-    return r.test(address);
   }
 
   static async sleep(timeout) {

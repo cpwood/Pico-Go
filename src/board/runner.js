@@ -11,16 +11,6 @@ export default class Runner {
     this.busy = false;
   }
 
-  toggle(cb) {
-    this.toggleAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
-  }
-
   async toggleAsync() {
     if (this.busy) {
       await this.stopAsync();
@@ -28,16 +18,6 @@ export default class Runner {
     else {
       await this.startAsync();
     }
-  }
-
-  start(cb) {
-    this.startAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
   }
 
   async startAsync() {
@@ -54,16 +34,6 @@ export default class Runner {
     this.busy = false;
   }
 
-  selection(codeblock, cb, hideMessage = false) {
-    this.selectionAsync(codeblock, hideMessage)
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
-  }
-
   async selectionAsync(codeblock, hideMessage = false) {
     codeblock = this._trimcodeblock(codeblock);
     if (!hideMessage)
@@ -75,18 +45,8 @@ export default class Runner {
       this.busy = false;
     }
     catch(err) {
-      this.terminal.writeln_and_prompt(err);
+      this.terminal.writelnAndPrompt(err);
     }
-  }
-
-  stop(cb) {
-    this.stopAsync()
-    .then(() => {
-      if (cb) cb();
-    })
-    .catch(err => {
-      if (cb) cb(err);
-    });
   }
 
   async stopAsync() {
@@ -100,7 +60,7 @@ export default class Runner {
     }
   }
 
-  _getCurrentFile(cb, onerror) {
+  _getCurrentFile() {
     let file = this.api.getOpenFile();
 
     if (!file.content) {

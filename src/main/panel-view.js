@@ -22,7 +22,7 @@ export default class PanelView extends EventEmitter {
     this.statusItems = {};
 
     for (let barItem of pkg.statusBar) {
-      this.statusItems[barItem.key] = this.createStatusItem(
+      this.statusItems[barItem.key] = this._createStatusItem(
         barItem.key,
         barItem.name,
         barItem.command,
@@ -30,13 +30,13 @@ export default class PanelView extends EventEmitter {
       );
     }
 
-    this.setTitle('not connected');
+    this._setTitle('not connected');
     // terminal logic
     let onTermConnect = function(err) {
       _this.emit('term-connected', err);
     };
 
-    _this.setProjectName(_this.api.getProjectPath());
+    _this._setProjectName(_this.api.getProjectPath());
 
     // create terminal
     this.terminal = new Term(onTermConnect, this.board, _this.settings);
@@ -73,7 +73,7 @@ export default class PanelView extends EventEmitter {
     });
   }
 
-  createStatusItem(key, name, command, tooltip) {
+  _createStatusItem(key, name, command, tooltip) {
     if (!this.statusItemPrio) {
       this.statusItemPrio = 15;
     }
@@ -95,7 +95,7 @@ export default class PanelView extends EventEmitter {
     return statusBarItem;
   }
 
-  setProjectName(project_path) {
+  _setProjectName(project_path) {
     if (project_path && project_path.indexOf('/') > -1) {
       this.projectName = project_path.split('/').pop();
     }
@@ -107,44 +107,41 @@ export default class PanelView extends EventEmitter {
 
   // refresh button display based on current status
   setButtonState(runnerBusy, synchronizing, synchronizeType) {
-    // if (!this.visible) {
-    //   this.setTitle('not connected')
-    // }else if(this.pyboard.connected) {
     if (this.board.connected) {
       if (runnerBusy == undefined) {
         // do nothing
       }
       else if (runnerBusy) {
-        this.setButton('run', 'primitive-square', 'Stop');
+        this._setButton('run', 'primitive-square', 'Stop');
       }
       else {
-        this.setButton('run', 'triangle-right', 'Run');
+        this._setButton('run', 'triangle-right', 'Run');
       }
       if (synchronizing) {
         if (synchronizeType == 'receive') {
-          this.setButton('download', 'close', 'Cancel');
+          this._setButton('download', 'close', 'Cancel');
         }
         else {
-          this.setButton('upload', 'close', 'Cancel');
+          this._setButton('upload', 'close', 'Cancel');
         }
       }
       else {
-        this.setButton('upload', 'triangle-up', 'Upload');
-        this.setButton('download', 'triangle-down', 'Download');
+        this._setButton('upload', 'triangle-up', 'Upload');
+        this._setButton('download', 'triangle-down', 'Download');
       }
 
-      this.setTitle('connected');
+      this._setTitle('connected');
     }
     else {
-      this.setTitle('not connected');
+      this._setTitle('not connected');
     }
   }
 
-  setButton(name, icon, text) {
+  _setButton(name, icon, text) {
     this.statusItems[name].text = '$(' + icon + ') ' + text;
   }
 
-  setTitle(status) {
+  _setTitle(status) {
     let icon = 'chrome-close';
     let title = 'Pico Disconnected';
 
@@ -153,7 +150,7 @@ export default class PanelView extends EventEmitter {
       title = 'Pico Connected';
     }
 
-    this.setButton('status', icon, title);
+    this._setButton('status', icon, title);
   }
 
   hidePanel() {
@@ -173,11 +170,7 @@ export default class PanelView extends EventEmitter {
   }
 
   // Tear down any state and detach
-  destroy() {
-    this.disconnect();
-  }
-
-  getElement() {
-    return {};
+  async destroy() {
+    await this.disconnectAsync();
   }
 }

@@ -1,8 +1,6 @@
 'use babel';
-import * as fs from 'fs';
+
 import { promises as fsp } from 'fs';
-//let vscode = require('vscode');
-//let ncp = require('copy-paste');
 import * as vscode from 'vscode';
 import * as ncp from 'copy-paste';
 import utils from '../helpers/utils.js';
@@ -32,28 +30,18 @@ export default class ApiWrapper {
     }
   }
 
-  openSettings(cb) {
-    this.openSettingsAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
   async openSettingsAsync() {
     if (!this.configFile) {
       throw new Error('No config file found');
     }
 
-    if (!this.settingsExist()) {
+    if (!await this.settingsExistAsync()) {
       // Create settings file
       let defaultConfig = this.settings.getDefaultGlobalConfig();
       let json = JSON.stringify(defaultConfig, null, '\t');
 
       await fsp.writeFile(this.configFile, json);
-      this.settings.watchConfigFile(this.configFile);
+      await this.settings.watchConfigFileAsync(this.configFile);
     }
 
     let uri = vscode.Uri.file(this.configFile);
@@ -61,28 +49,11 @@ export default class ApiWrapper {
     vscode.window.showTextDocument(textDoc);
   }
 
-  settingsExist() {
-    if(this.configFile){
-      try{
-        fs.openSync(this.configFile,'r');
-        return true;
-      }catch(e){
-        return false;
-      }
-    }
-  }
-
   async settingsExistAsync() {
     if (this.configFile) {
       return await utils.exists(this.configFile);
     }
     return false;
-  }
-
-  writeToCipboard(text) {
-    ncp.copy(text, function() {
-      // completed
-    });
   }
 
   // It's not happy proimisifying this!
@@ -102,39 +73,18 @@ export default class ApiWrapper {
     }
   }
 
-  getPackageSrcPath() {
-    let dir = utils.normalize(__dirname).replace('/lib/main', '/src/');
-    if (this.isWindows) {
-      dir = dir.replace(/\//g, '\\');
-    }
-    return dir;
-  }
-
-  getConnectionState(com) {
-    let state = this.getConnectionStateContents();
+  async getConnectionStateAsync(com) {
+    let state = await this._getConnectionStateContentsAsync();
     if (!state) return state;
     return state[com];
   }
 
-  getConnectionStatePath() {
+  _getConnectionStatePath() {
     return this.getPackagePath();
   }
 
-  getConnectionStateContents() {
-    let folder = this.getConnectionStatePath();
-    try {
-      return JSON.parse(fs.readFileSync(folder + this
-        .connectionStateFilename));
-    }
-    catch (e) {
-      console.log(e);
-      // ignore and continue
-      return {};
-    }
-  }
-
-  async getConnectionStateContentsAsync() {
-    let folder = this.getConnectionStatePath();
+  async _getConnectionStateContentsAsync() {
+    let folder = this._getConnectionStatePath();
     try {
       return JSON.parse(await fsp.readFile(folder + this
         .connectionStateFilename));
@@ -145,26 +95,10 @@ export default class ApiWrapper {
     }
   }
 
-  setConnectionState(com, state, project_name) {
-    let folder = this.getConnectionStatePath();
-    let timestamp = new Date().getTime();
-    let stateObject = this.getConnectionStateContents();
-
-    if (state) {
-      stateObject[com] = { timestamp: timestamp, project: project_name };
-    }
-    else if (stateObject[com]) {
-      delete stateObject[com];
-    }
-
-    fs.writeFileSync(folder + '/connection_state.json', JSON.stringify(
-      stateObject));
-  }
-
   async setConnectionStateAsync(com, state, project_name) {
-    let folder = this.getConnectionStatePath();
+    let folder = this._getConnectionStatePath();
     let timestamp = new Date().getTime();
-    let stateObject = this.getConnectionStateContents();
+    let stateObject = await this._getConnectionStateContentsAsync();
 
     if (state) {
       stateObject[com] = { timestamp: timestamp, project: project_name };
@@ -177,33 +111,8 @@ export default class ApiWrapper {
       stateObject));
   }
 
-  getProjectPaths() {
-    let path = this.rootPath();
-    if (path == null) return [];
-    return [path];
-  }
-
   error(text) {
     window.showErrorMessage(text);
-  }
-
-  confirm(text, options) {
-    let items = [];
-    for (let key in options) {
-      items.push(key);
-    }
-    let option_item = {
-      placeHolder: text
-    };
-
-    return window.showQuickPick(items, option_item).then(function(item) {
-      if (item) {
-        options[item]();
-      }
-      else {
-        options['Cancel']();
-      }
-    });
   }
 
   async confirmAsync(text, options) {
@@ -213,10 +122,10 @@ export default class ApiWrapper {
   }
 
   getProjectPath() {
-    return this.rootPath();
+    return this._rootPath();
   }
 
-  rootPath() {
+  _rootPath() {
     // TODO: multi-workspace folders
     // https://github.com/microsoft/vscode/wiki/Adopting-Multi-Root-Workspace-APIs#eliminating-rootpath
     let path = workspace.rootPath;
@@ -229,21 +138,13 @@ export default class ApiWrapper {
     return null;
   }
 
-  openFile(filename, cb) {
-    let uri = vscode.Uri.file(filename);
-    workspace.openTextDocument(uri).then(function(textDoc) {
-      vscode.window.showTextDocument(textDoc);
-      cb();
-    });
-  }
-
   async openFileAsync(filename) {
     let uri = vscode.Uri.file(filename);
     let textDoc = await workspace.openTextDocument(uri);
     vscode.window.showTextDocument(textDoc);
   }
 
-  notification(text, type) {
+  _notification(text, type) {
     if (type == 'warning') {
       vscode.window.showWarningMessage(text);
     }
@@ -256,15 +157,11 @@ export default class ApiWrapper {
   }
 
   error(text) {
-    this.notification(text, 'error');
+    this._notification(text, 'error');
   }
-
-  info(text) {
-    this.notification(text, 'info');
-  }
-
+  
   warning(text) {
-    this.notification(text, 'warning');
+    this._notification(text, 'warning');
   }
 
   getOpenFile() {

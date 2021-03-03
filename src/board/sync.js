@@ -8,6 +8,7 @@ import ProjectStatus from './project-status.js';
 import Utils from '../helpers/utils.js';
 import FileWriter from './file-writer.js';
 import { promises as fsp } from 'fs';
+import _ from 'lodash';
 
 export default class Sync {
 
@@ -38,14 +39,14 @@ export default class Sync {
       .pyFolder);
   }
 
-  async isReady() {
+  async _isReady() {
 
     // check if there is a project open
     if (!this.projectPath) {
       return new Error('No project open');
     }
     // check if project exists
-    if (!await this.existsAsync(this.pyFolder)) {
+    if (!await this._existsAsync(this.pyFolder)) {
       console.log("Py folder doesn't exist");
       return new Error("Unable to find folder '" + this.settings.sync_folder +
         "' in your project. Please add the correct folder in your settings");
@@ -54,11 +55,11 @@ export default class Sync {
     return true;
   }
 
-  async existsAsync(dir) {
+  async _existsAsync(dir) {
     return await Utils.exists(dir);
   }
 
-  progress(text, count) {
+  _progress(text, count) {
     if (count) {
       this.progressFileCount += 1;
       text = '[' + this.progressFileCount + '/' + this
@@ -70,7 +71,7 @@ export default class Sync {
     }, 0);
   }
 
-  syncDone(err) {
+  _syncDone(err) {
     this.logger.verbose('Sync done!');
     this.isRunning = false;
     let mssg = this.methodName + ' done';
@@ -100,7 +101,7 @@ export default class Sync {
     }
   }
 
-  resetValues(oncomplete, method) {
+  _resetValues(oncomplete, method) {
     // prepare variables
     if (method != 'receive') {
       method = 'send';
@@ -119,7 +120,6 @@ export default class Sync {
   }
 
   setPaths() {
-
     this.projectPath = this.api.getProjectPath();
     if (this.projectPath) {
 
@@ -154,18 +154,18 @@ export default class Sync {
     this.method = method;
 
     try {
-      this.resetValues(oncomplete, method);
+      this._resetValues(oncomplete, method);
     }
     catch (e) {
       this.logger.error(e);
-      this.syncDone(e);
+      this._syncDone(e);
       return;
     }
 
     // check if project is ready to sync
-    let ready = await this.isReady();
+    let ready = await this._isReady();
     if (ready instanceof Error) {
-      this.syncDone(ready);
+      this._syncDone(ready);
       return;
     }
 
@@ -189,14 +189,14 @@ export default class Sync {
     catch (err) {
       this.logger.error('Safeboot failed');
       this.logger.error(err);
-      this.progress(
+      this._progress(
         `Safe boot failed, '${this.methodAction.toLowerCase()} anyway.`);
     }
 
     this.logger.silly('Start shell');
 
     try {
-      await this.startShellAsync();
+      await this._startShellAsync();
 
       this.inRawMode = true;
 
@@ -213,13 +213,13 @@ export default class Sync {
       this.logger.silly('Entered raw mode');
 
       if (!this.isRunning) {
-        this.stoppedByUser();
+        this._stoppedByUser();
         return;
       }
     }
     catch (err) {
       this.logger.error(err);
-      await this.throwErrorAsync(err);
+      await this._throwErrorAsync(err);
       this.exit();
       return;
     }
@@ -231,11 +231,11 @@ export default class Sync {
       await this._sendAsync(files);
     }
 
-    this.syncDone();
+    this._syncDone();
   }
 
   async _receiveAsync() {
-    this.progress('Reading files from board');
+    this._progress('Reading files from board');
 
     let fileList = null;
 
@@ -245,9 +245,9 @@ export default class Sync {
       fileList = _.map(fileList, x => x.Fullname.substr(1));
     }
     catch (err) {
-      this.progress(
+      this._progress(
         'Failed to read files from board, canceling file download');
-      await this.throwErrorAsync(err);
+      await this._throwErrorAsync(err);
       return;
     }
 
@@ -301,73 +301,73 @@ export default class Sync {
     await Utils.sleep(100);
 
     if (fileList.length == 0) {
-      await this.completeAsync();
+      await this._completeAsync();
       return true;
     }
 
     mssg =
       `${mssg}. Do you want to download these files into your project (${this.projectName} - ${this.folderName}), overwriting existing files?`;
-    this.progress(mssg);
-    this.progress('(Use the confirmation box at the top of the screen)');
+    this._progress(mssg);
+    this._progress('(Use the confirmation box at the top of the screen)');
 
     let chosen = await this.api.confirmAsync(mssg, options);
 
     switch (chosen) {
       case 'Cancel':
-        await this.receiveCancelAsync();
+        await this._receiveCancelAsync();
         break;
       case 'Yes':
-        await this.receiveOverwriteAsync(fileList);
+        await this._receiveOverwriteAsync(fileList);
         break;
       case 'Only new files':
-        await this.receiveOnlyNewAsync(newFiles);
+        await this._receiveOnlyNewAsync(newFiles);
         break;
     }
   }
 
-  checkChoiceTimeout() {
+  _checkChoiceTimeout() {
     if (Date.now() - this.choiceTimeout > 29000) {
-      this.throwErrorAsync(new Error(
+      this._throwErrorAsync(new Error(
         'Choice timeout (30 seconds) occurred.'));
       return false;
     }
     return true;
   }
 
-  async receiveCancelAsync() {
-    if (this.checkChoiceTimeout()) {
-      this.progress('Cancelled');
-      await this.completeAsync();
+  async _receiveCancelAsync() {
+    if (this._checkChoiceTimeout()) {
+      this._progress('Cancelled');
+      await this._completeAsync();
     }
   }
 
-  async receiveOverwriteAsync(fileList) {
-    if (this.checkChoiceTimeout()) {
-      this.progress(
+  async _receiveOverwriteAsync(fileList) {
+    if (this._checkChoiceTimeout()) {
+      this._progress(
         `Downloading ${fileList.length} ${this.utils.plural('file',fileList.length)}...`
       );
       this.progressFileCount = 0;
       this.numberOfChangedFiles = fileList.length;
 
-      await this.receiveFilesAsync(fileList);
+      await this._receiveFilesAsync(fileList);
 
       this.logger.info('All items received');
-      this.progress('All items overwritten');
-      await this.completeAsync();
+      this._progress('All items overwritten');
+      await this._completeAsync();
     }
   }
 
-  async receiveOnlyNewAsync(newFiles) {
-    if (this.checkChoiceTimeout()) {
-      this.progress('Downloading ' + newFiles.length + ' files...');
+  async _receiveOnlyNewAsync(newFiles) {
+    if (this._checkChoiceTimeout()) {
+      this._progress('Downloading ' + newFiles.length + ' files...');
       this.progressFileCount = 0;
       this.numberOfChangedFiles = newFiles.length;
 
-      await this.receiveFilesAsync(newFiles);
+      await this._receiveFilesAsync(newFiles);
 
       this.logger.info('All items received');
-      this.progress('All items overwritten');
-      await this.completeAsync();
+      this._progress('All items overwritten');
+      await this._completeAsync();
     }
   }
 
@@ -375,7 +375,7 @@ export default class Sync {
     await this.board.stopRunningProgramsDoubleAsync(500);
 
     if (!this.settings.safe_boot_on_upload) {
-      this.progress('Not safe booting, disabled in settings');
+      this._progress('Not safe booting, disabled in settings');
       return false;
     }
 
@@ -384,13 +384,13 @@ export default class Sync {
     }
 
     this.logger.info('Safe booting...');
-    this.progress('Safe booting device... (see settings for more info)');
+    this._progress('Safe booting device... (see settings for more info)');
     await this.board.safeBootAsync(4000);
   }
 
-  async receiveFilesAsync(list) {
+  async _receiveFilesAsync(list) {
     for (let boardName of list) {
-      this.progress(`Reading ${boardName}`, true);
+      this._progress(`Reading ${boardName}`, true);
 
       let localName = this.pyFolder + boardName;
       let buffer = null;
@@ -400,7 +400,7 @@ export default class Sync {
         buffer = result.buffer;
       }
       catch (err) {
-        this.progress(`Failed to download ${boardName}`);
+        this._progress(`Failed to download ${boardName}`);
         this.logger.error(err);
         continue;
       }
@@ -412,17 +412,17 @@ export default class Sync {
       catch (e) {
         this.logger.error(`Failed to open and write ${localName}`);
         this.logger.error(e);
-        this.progress(`Failed to write to local file ${boardName}`);
+        this._progress(`Failed to write to local file ${boardName}`);
       }
     }
   }
 
   async _sendAsync(files) {
-    this.progress('Reading file status');
+    this._progress('Reading file status');
     this.logger.info('Reading pymakr file');
 
     if (!this.isRunning) {
-      this.stoppedByUser();
+      this._stoppedByUser();
       return;
     }
 
@@ -434,10 +434,10 @@ export default class Sync {
           files);
         files = [files];
 
-        this.progress('Uploading single file');
+        this._progress('Uploading single file');
       }
       else {
-        this.progress(`Uploading ${files.length} files`);
+        this._progress(`Uploading ${files.length} files`);
       }
 
       this.numberOfChangedFiles = files.length;
@@ -450,7 +450,7 @@ export default class Sync {
         await this.projectStatus.readAsync();
       }
       catch (err) {
-        this.progress(
+        this._progress(
           'Failed to read project status, uploading all files');
       }
 
@@ -460,7 +460,7 @@ export default class Sync {
   }
 
   async _writeChangesAsync() {
-    let changes = this.projectStatus.get_changes();
+    let changes = this.projectStatus.getChanges();
 
     let deletes = changes['delete'];
     let changedFiles = changes['files'];
@@ -471,22 +471,22 @@ export default class Sync {
     this.maxFailures = Math.min(Math.ceil(changedFiles.length / 2), 5);
 
     if (deletes.length > 0) {
-      this.progress(`Deleting ${deletes.length} files and folders`);
+      this._progress(`Deleting ${deletes.length} files and folders`);
     }
 
     if (deletes.length == 0 && changedFiles.length == 0 && changedFolders
       .length == 0) {
-      this.progress('No files to upload');
-      await this.completeAsync();
+      this._progress('No files to upload');
+      await this._completeAsync();
       return;
     }
 
     this.logger.info('Removing files');
 
-    await this.removeFilesRecursiveAsync(deletes);
+    await this._removeFilesRecursiveAsync(deletes);
 
     if (!this.isRunning) {
-      this.stoppedByUser();
+      this._stoppedByUser();
       return;
     }
     if (deletes.length > 0) {
@@ -502,15 +502,15 @@ export default class Sync {
     this.logger.info('Writing changed folders');
 
     try {
-      await this.writeFilesRecursiveAsync(files_and_folders);
+      await this._writeFilesRecursiveAsync(files_and_folders);
 
       if (!this.isRunning) {
-        this.stoppedByUser();
+        this._stoppedByUser();
         return;
       }
     }
     catch (err) {
-      await this.throwErrorAsync(err);
+      await this._throwErrorAsync(err);
       return;
     }
 
@@ -520,15 +520,15 @@ export default class Sync {
       await this.projectStatus.writeAsync();
 
       if (!this.isRunning) {
-        this.stoppedByUser();
+        this._stoppedByUser();
         return;
       }
 
       this.logger.info('Exiting...');
-      await this.completeAsync();
+      await this._completeAsync();
     }
     catch (err) {
-      await this.throwErrorAsync(err);
+      await this._throwErrorAsync(err);
       return;
     }
   }
@@ -552,18 +552,18 @@ export default class Sync {
 
     await this.projectStatus.writeAsync();
 
-    await this.completeAsync();
+    await this._completeAsync();
     this.board.stopWaitingForSilent();
   }
 
-  stoppedByUser() {
+  _stoppedByUser() {
     this.logger.warning('Sync cancelled');
     if (!this.isStopping) {
       this.isStopping = true;
     }
   }
 
-  async throwErrorAsync(err) {
+  async _throwErrorAsync(err) {
     let mssg = err ? err : new Error('');
 
     this.logger.warning('Error thrown during sync procedure');
@@ -575,11 +575,11 @@ export default class Sync {
     if (promise != undefined)
       await promise;
 
-    await this.exitAsync();
+    await this._exitAsync();
     await this.board.enterFriendlyReplNonBlockingAsync();
   }
 
-  async completeAsync() {
+  async _completeAsync() {
     try {
       await this.utils.rmdirAsync(this.projectPath + '/' + this.config
         .compressed_files_folder);
@@ -590,7 +590,7 @@ export default class Sync {
       this.logger.info(e);
     }
 
-    await this.exitAsync();
+    await this._exitAsync();
 
     if (this.oncomplete) {
       this.oncomplete();
@@ -599,7 +599,7 @@ export default class Sync {
     }
   }
 
-  async removeFilesRecursiveAsync(files, depth) {
+  async _removeFilesRecursiveAsync(files, depth) {
     if (!depth)
       depth = 0;
 
@@ -611,49 +611,49 @@ export default class Sync {
       let filename = file[0];
       let type = file[1];
       if (type == 'd') {
-        this.progress('Removing dir ' + filename);
+        this._progress('Removing dir ' + filename);
 
         try {
           await this.shell.removeDirAsync(filename);
         }
         catch (err) {
-          this.progress('Failed to remove dir ' + filename);
+          this._progress('Failed to remove dir ' + filename);
         }
 
         this.projectStatus.update(filename);
 
         if (!this.isRunning) {
-          this.stoppedByUser();
+          this._stoppedByUser();
           return;
         }
 
         files.splice(0, 1);
-        await this.removeFilesRecursiveAsync(files, depth + 1);
+        await this._removeFilesRecursiveAsync(files, depth + 1);
       }
       else {
-        this.progress('Removing file ' + filename);
+        this._progress('Removing file ' + filename);
 
         try {
           await this.shell.removeFileAsync(filename);
         }
         catch (err) {
-          this.progress('Failed to remove file ' + filename);
+          this._progress('Failed to remove file ' + filename);
         }
 
         this.projectStatus.update(filename);
 
         if (!this.isRunning) {
-          this.stoppedByUser();
+          this._stoppedByUser();
           return;
         }
 
         files.splice(0, 1);
-        await this.removeFilesRecursiveAsync(files, depth + 1);
+        await this._removeFilesRecursiveAsync(files, depth + 1);
       }
     }
   }
 
-  async writeFilesRecursiveAsync(files, depth) {
+  async _writeFilesRecursiveAsync(files, depth) {
     if (!depth)
       depth = 0;
 
@@ -678,7 +678,7 @@ export default class Sync {
         let startTime = new Date().getTime();
         let message =
           `Writing file '${filename}' (${size == 0 ? file[3] : size} ${size == 0 ? 'bytes' : 'kB'})`;
-        this.progress(message, true);
+        this._progress(message, true);
 
         try {
           await fw.writeFile(file_path);
@@ -690,31 +690,31 @@ export default class Sync {
           this.projectStatus.update(filename);
 
           if (!this.isRunning) {
-            this.stoppedByUser();
+            this._stoppedByUser();
             return;
           }
 
           files.splice(0, 1);
-          await this.writeFilesRecursiveAsync(files, depth + 1);
+          await this._writeFilesRecursiveAsync(files, depth + 1);
         }
         catch (err) {
-          this.progress(err.message);
+          this._progress(err.message);
           this.logger.error(err);
           throw err;
         }
       }
       else {
-        this.progress('Creating dir ' + filename);
+        this._progress('Creating dir ' + filename);
         await this.shell.createDirAsync(filename);
 
         this.projectStatus.update(filename);
         files.splice(0, 1);
-        await this.writeFilesRecursiveAsync(files, depth + 1);
+        await this._writeFilesRecursiveAsync(files, depth + 1);
       }
     }
   }
 
-  async startShellAsync() {
+  async _startShellAsync() {
     this.shell = new Shell(this.board, this.method, this.settings);
     await this.shell.initialiseAsync();
   }
@@ -741,7 +741,7 @@ export default class Sync {
     return list;
   }
 
-  async exitAsync() {
+  async _exitAsync() {
     await this.shell.exitAsync();
   }
 }

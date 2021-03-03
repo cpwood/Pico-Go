@@ -29,13 +29,13 @@ export default class Term {
     //dragging
     this.startY = null;
     let _this = this;
-    this.create();
+    this._create();
 
-    this.connect(cb);
+    this._connect(cb);
 
     vscode.window.onDidCloseTerminal(function(event) {
       if (!_this.createFailed && event._name == _this.terminalName) {
-        _this.create();
+        _this._create();
       }
     });
   }
@@ -50,17 +50,17 @@ export default class Term {
     this.terminal.hide();
   }
 
-  connectReattempt(cb) {
+  _connectReattempt(cb) {
     let _this = this;
     this.connectionAttempt += 1;
     this.connected = false;
     setTimeout(function() {
-      _this.connect(cb);
+      _this._connect(cb);
     }, 200);
 
   }
 
-  create() {
+  _create() {
     this.createFailed = false;
     this.port = parseInt(Math.random() * 1000 + 1337);
     try {
@@ -78,7 +78,7 @@ export default class Term {
     }
   }
 
-  connect(cb) {
+  _connect(cb) {
 
     if (this.connectionAttempt > 20) {
       cb(new Error(
@@ -104,7 +104,7 @@ export default class Term {
     this.stream.on('timeout', function() {
       if (!stopped) {
         stopped = true;
-        _this.connectReattempt(cb);
+        _this._connectReattempt(cb);
       }
     });
     this.stream.on('error', function(error) {
@@ -112,7 +112,7 @@ export default class Term {
       _this.logger.warning(error);
       if (!stopped) {
         stopped = true;
-        _this.connectReattempt(cb);
+        _this._connectReattempt(cb);
       }
     });
     this.stream.on('close', function(had_error) {
@@ -120,18 +120,18 @@ export default class Term {
       _this.logger.warning(had_error);
       if (!stopped) {
         stopped = true;
-        _this.connectReattempt(cb);
+        _this._connectReattempt(cb);
       }
     });
     this.stream.on('end', function() {
       _this.logger.warning('Term connection ended ');
       if (!stopped) {
         stopped = true;
-        _this.connectReattempt(cb);
+        _this._connectReattempt(cb);
       }
     });
     this.stream.on('data', function(data) {
-      _this.userInput(data);
+      _this._userInput(data);
     });
   }
 
@@ -155,7 +155,7 @@ export default class Term {
     }
   }
 
-  writeln_and_prompt(mssg) {
+  writelnAndPrompt(mssg) {
     this.writeln(mssg + '\r\n');
     this.writePrompt();
   }
@@ -172,12 +172,7 @@ export default class Term {
     this.lastWrite = '';
   }
 
-  userInput(input) {
+  _userInput(input) {
     this.onMessage(input);
-  }
-
-  paste() {
-    let content = this.api.clipboard().replace(/\n/g, '\r');
-    this.userInput(content);
   }
 }

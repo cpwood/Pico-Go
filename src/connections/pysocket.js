@@ -55,16 +55,6 @@ export default class PySocket {
     });
   }
 
-  disconnect(cb) {
-    this.disconnectAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
   async disconnectAsync() {
     await this._stream_destroy();
     this.stream = null;
@@ -78,33 +68,10 @@ export default class PySocket {
     });
   }
 
-  send(msg, cb) {
-    this.sendAsync(msg)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
   async sendAsync(msg) {
     msg = msg.replace('\x1b', '\x1b\x1b');
     let data = Buffer.from(msg, 'binary');
-    await this.sendRawAsync(data);
-  }
 
-  send_raw(data, cb) {
-    this.sendRawAsync(data)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
-  async sendRawAsync(data) {
     if (this.stream) {
       await this._stream_write(data);
     }
@@ -113,33 +80,8 @@ export default class PySocket {
     }
   }
 
-  send_cmd(cmd, cb) {
-    this.sendCmdAsync(cmd)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
-  async sendCmdAsync(cmd) {
-    let msg = '\x1b\x1b' + cmd;
-    let data = Buffer.from(msg, 'binary');
-    await this.sendRawAsync(data);
-  }
-
-  sendPing(cb) {
-    if (cb) cb(null);
-    return true;
-  }
-
   async sendPingAsync() {
     return true;
-  }
-
-  flush(cb) {
-    cb();
   }
 
   async flushAsync() {}

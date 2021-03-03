@@ -10,7 +10,6 @@ import { createDeflate } from 'zlib';
 import { pipeline } from 'stream';
 import { createReadStream, createWriteStream } from 'fs';
 import { promisify } from 'util';
-import _ from 'lodash';
 
 const pipe = promisify(pipeline);
 
@@ -32,16 +31,6 @@ export default class Shell {
     this.interrupted = false;
   }
 
-  initialise(cb) {
-    this.initialiseAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
   async initialiseAsync() {
     this.logger.silly('Try to enter raw mode');
 
@@ -51,16 +40,6 @@ export default class Shell {
     }
   }
 
-  getFreeSpace(cb) {
-    this.getFreeSpaceAsync()
-      .then(result => {
-        if (cb) cb(null, result);
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
   async getFreeSpaceAsync() {
     let command =
       'import os, sys\r\n' +
@@ -68,17 +47,7 @@ export default class Shell {
       'sys.stdout.write(str(s[0]*s[3])\r\n' +
       'del(_s)\r\n';
 
-    return await this.pyboard.xxSendWait(command);
-  }
-
-  decompress(name, execute, cb) {
-    this.decompressAsync(name)
-      .then(result => {
-        if (cb) cb(null, result);
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
+    return await this.pyboard.sendWait(command);
   }
 
   async decompressAsync(name) {
@@ -92,17 +61,7 @@ export default class Shell {
       '  del(c)\r\n' +
       "decompress('" + name + "')\r\n";
 
-    return await this.pyboard.xxSendWait(command, null, 40000);
-  }
-
-  compress(filepath, name, cb) {
-    this.compressAsync(filepath, name)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
+    return await this.pyboard.sendWait(command, null, 40000);
   }
 
   async compressAsync(filepath, name) {
@@ -114,34 +73,9 @@ export default class Shell {
     await pipe(source, deflator, destination);
   }
 
-  writeFile(name, file_path, contents, compare_hash, compress, callback,
-    retries = 0) {
-    this.writeFileAsync(name, file_path, contents, compare_hash, compress,
-        retries)
-      .then(() => {
-        if (callback) callback();
-      })
-      .catch(err => {
-        if (callback) callback(err);
-      });
-  }
-
   async writeFileAsync(name, file_path, contents) {
     let fw = new FileWriter(this, this.pyboard, this.settings, this.api);
-    // let hash = '';
-    // if (compare_hash)
-    //   hash = await this.getHashAsync(file_path);
     await fw.writeFileContent(name, file_path, contents, 0);
-  }
-
-  ensureDirectory(fullPath, cb) {
-    this.ensureDirectoryAsync(fullPath)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
   }
 
   async ensureDirectoryAsync(fullPath) {
@@ -170,17 +104,7 @@ export default class Shell {
       command += `ensureFolder("${parts.slice(0, i).join('/')}")\r\n`;
     }
 
-    await this.pyboard.xxSendWait(command, null, 30000);
-  }
-
-  readFile(name, callback) {
-    this.readFileAsync(name)
-      .then(result => {
-        if (callback) callback(null, result.buffer, result.str);
-      })
-      .catch(err => {
-        if (callback) callback(err);
-      });
+    await this.pyboard.sendWait(command, null, 30000);
   }
 
   async readFileAsync(name) {
@@ -196,7 +120,7 @@ export default class Shell {
       "    if not len(c) or c == b'\\n':" + '\r\n' +
       '        break\r\n';
 
-    let content = await this.pyboard.xxSendWait(command, null, 60000);
+    let content = await this.pyboard.sendWait(command, null, 60000);
 
     // Workaround for the "OK" return of soft reset, which is sometimes returned with the content
     if (content.indexOf('OK') == 0) {
@@ -278,32 +202,8 @@ export default class Shell {
       '\r\n' +
       `print(listdir("${root}", ${toPythonBoolean(recursive)}, True, ${toPythonBoolean(hash)}))`;
 
-    let raw = await this.pyboard.xxSendWait(command, null, 10000);
+    let raw = await this.pyboard.sendWait(command, null, 10000);
     return JSON.parse(raw);
-  }
-
-  // list files on MCU 
-  list_files(cb) {
-    this.listAsync('/', true, false)
-      .then(result => {
-        let ret = _.map(_.filter(result, x => x.Type == 'file'), x => x
-          .Fullname);
-        if (cb) cb(null, ret);
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
-  removeFile(name, cb) {
-    let _this = this;
-    let command =
-      'import os\r\n' +
-      "os.remove('" + name + "')\r\n";
-
-    _this.eval(command, function(err, content) {
-      cb(err, content);
-    });
   }
 
   async removeFileAsync(name) {
@@ -311,58 +211,28 @@ export default class Shell {
       'import os\r\n' +
       "os.remove('" + name + "')\r\n";
 
-    await this.pyboard.xxSendWait(command);
-  }
-
-  createDir(name, cb) {
-    this.createDir(name)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
+    await this.pyboard.sendWait(command);
   }
 
   async createDirAsync(name) {
     let command =
       'import os\r\n' +
       "os.mkdir('" + name + "')\r\n";
-    await this.pyboard.xxSendWait(command);
+    await this.pyboard.sendWait(command);
   }
 
   async changeDirAsync(name) {
     let command =
       'import os\r\n' +
       "os.chdir('" + name + "')\r\n";
-    await this.pyboard.xxSendWait(command);
-  }
-
-  removeDir(name, cb) {
-    this.removeDirAsync(name)
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
+    await this.pyboard.sendWait(command);
   }
 
   async removeDirAsync(name) {
     let command =
       'import os\r\n' +
       "os.rmdir('" + name + "')\r\n";
-    await this.pyboard.xxSendWait(command);
-  }
-
-  reset(cb) {
-    this.resetAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
+    await this.pyboard.sendWait(command);
   }
 
   async resetAsync() {
@@ -370,20 +240,10 @@ export default class Shell {
       'import machine\r\n' +
       'machine.reset()\r\n';
 
-    await this.pyboard.xxSend(command);
-    await this.pyboard.xxSend(this.EOF, false); // Execute.
+    await this.pyboard.send(command);
+    await this.pyboard.send(this.EOF, false); // Execute.
     await Utils.sleep(1000);
     await this.pyboard.reconnectAsync();
-  }
-
-  safeboot_restart(cb) {
-    this.safebootRestartAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
   }
 
   async safebootRestartAsync() {
@@ -391,44 +251,13 @@ export default class Shell {
     await this.pyboard.enterRawReplNoResetAsync();
   }
 
-  // evaluates command through REPL and returns the resulting feedback
-  eval(c, cb, timeout) {
-    this.evalAsync(c, timeout)
-      .then(result => {
-        if (cb) cb(null, result);
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
   async evalAsync(c, timeout) {
-    return await this.xxSendWait(c, null, timeout);
-  }
-
-  exit(cb) {
-    this.exitAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
+    return await this.sendWait(c, null, timeout);
   }
 
   async exitAsync() {
     await this.stopWorkingAsync();
     await this._cleanCloseAsync();
-  }
-
-  stop_working(cb) {
-    this.stopWorkingAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
   }
 
   async stopWorkingAsync() {
@@ -465,16 +294,6 @@ export default class Shell {
     });
   }
 
-  __clean_close(cb) {
-    this._cleanCloseAsync()
-      .then(() => {
-        if (cb) cb();
-      })
-      .catch(err => {
-        if (cb) cb(err);
-      });
-  }
-
   async _cleanCloseAsync() {
     this.logger.info('Closing shell cleanly');
 
@@ -486,7 +305,7 @@ export default class Shell {
     }
 
     await this.pyboard.enterFriendlyReplAsync();
-    await this.pyboard.xxSend('\r\n');
+    await this.pyboard.send('\r\n');
 
     this.logger.info('Closed successfully');
 
