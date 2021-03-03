@@ -12,16 +12,16 @@ If the goal is to evolve Pico-Go and keep it first class, we can't be hampered w
 
 A three-phase approach will be used: the first is all about laying async-await groundwork and the second is about switching to it.
 
-It is anticipated that the changes will take up to three months, starting in mid-February 2021.
+> Work is now complete!
 
 ### Phase 1
 
-* For each `method(cb)` , add a `method()` ;
-* Make `method(cb)` call `method()` (using `then` and `catch`) instead of doing the work directly. For example:
+* For each `method(cb)` , add a `methodAsync()` ;
+* Make `method(cb)` call `methodAsync()` (using `then` and `catch`) instead of doing the work directly. For example:
 
 ```js
   send(msg, cb) {
-    this.send(msg, cb != undefined)
+    this.sendAsync(msg, cb != undefined)
       .then(() => {
         if (cb) cb();
       })
@@ -30,9 +30,9 @@ It is anticipated that the changes will take up to three months, starting in mid
       });
   }
 
-  async send(msg, drain = true) {
+  async sendAsync(msg, drain = true) {
     let data = Buffer.from(msg, 'binary');
-    await this.sendRaw(data, drain);
+    await this.sendRawAsync(data, drain);
   }
 ```
 
@@ -62,6 +62,7 @@ Additionally, and throughout both phases, the opportunity will be taken to norma
 
 ## Progress
 
+> Work is now complete!
 
 ```
 .
