@@ -110,12 +110,6 @@ export default class Activator {
       });
     context.subscriptions.push(disposable);
 
-    disposable = vscode.commands.registerCommand('pymakr.projectSettings',
-      async function() {
-        await pymakr.openProjectSettings();
-      });
-    context.subscriptions.push(disposable);
-
     disposable = vscode.commands.registerCommand('pymakr.disconnect',
       async function() {
         await pymakr.disconnect();

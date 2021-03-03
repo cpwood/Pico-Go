@@ -19,7 +19,7 @@ export default class SettingsWrapper extends EventEmitter {
     this.api = new ApiWrapper(this);
     this.projectPath = this.api.getProjectPath();
     this.globalConfigFile = Utils.getConfigPath('pico-go.json');
-    this.projectConfigFile = this.projectPath + '/pymakr.conf';
+    this.projectConfigFile = this.projectPath + '/pico-go.json';
     this.logger = new Logger('SettingsWrapper');
     this.utils = new Utils(this);
     this.projectChangeCallbacks = [];
@@ -44,9 +44,9 @@ export default class SettingsWrapper extends EventEmitter {
     }
 
     this.globalConfig = await this._readConfigFile(this
-      .globalConfigFile, false);
+      .globalConfigFile, true);
     this.projectConfig = await this._readConfigFile(this.projectConfigFile,
-      true);
+      false);
 
     await this.refresh();
     await this.watchConfigFile(this.globalConfigFile);
@@ -66,7 +66,7 @@ export default class SettingsWrapper extends EventEmitter {
 
   getProjectPath() {
     this.projectPath = this.api.getProjectPath();
-    this.projectConfigFile = this.projectPath + '/pymakr.conf';
+    this.projectConfigFile = this.projectPath + '/pico-go.json';
     return this.projectPath;
   }
 
@@ -199,7 +199,7 @@ export default class SettingsWrapper extends EventEmitter {
   async _readConfigFile(path, checkComplete = false) {
     let contents = {};
     try {
-      if (await Utils.exists(''+path)) {
+      if (await Utils.exists('' + path)) {
         contents = await fsp.readFile(path, { encoding: 'utf-8' });
         contents = JSON.parse(contents);
 
@@ -224,7 +224,7 @@ export default class SettingsWrapper extends EventEmitter {
     this.logger.info('Refreshing project config');
     this.projectConfig = {};
     this.projectPath = this.api.getProjectPath();
-    this.projectConfigFile = this.projectPath + '/pymakr.conf';
+    this.projectConfigFile = this.projectPath + '/pico-go.json';
 
     try {
       let contents = await this._readConfigFile(this.projectConfigFile);
@@ -300,13 +300,13 @@ export default class SettingsWrapper extends EventEmitter {
   _getDefaultConfig(global = false) {
     let config = {
       'sync_folder': this.api.config('sync_folder'),
-      'open_on_start': this.api.config('open_on_start'),
-      'safe_boot_on_upload': this.api.config('safe_boot_on_upload'),
-      'statusbar_buttons': this.api.config('statusbar_buttons'),
-      'py_ignore': this.api.config('py_ignore'),
-      'fast_upload': this.api.config('fast_upload')
+      'open_on_start': global ? this.api.config('open_on_start') : true
     };
     if (global) {
+      config.safe_boot_on_upload = this.api.config('safe_boot_on_upload');
+      config.statusbar_buttons = this.api.config('statusbar_buttons');
+      config.py_ignore = this.api.config('py_ignore');
+      config.fast_upload = this.api.config('fast_upload');
       config.sync_file_types = this.api.config('sync_file_types');
       config.ctrl_c_on_connect = this.api.config('ctrl_c_on_connect');
       config.sync_all_file_types = this.api.config('sync_all_file_types');
@@ -320,12 +320,7 @@ export default class SettingsWrapper extends EventEmitter {
 
   async openProjectSettings() {
     if (this.getProjectPath()) {
-      if (!await Utils.exists(this.projectConfigFile)) {
-        let json = this._newProjectSettingsJson();
-
-        await fsp.writeFile(this.projectConfigFile, json);
-        await this.watchConfigFile(this.projectConfigFile);
-      }
+      await this.createProjectSettings();
 
       let uri = vscode.Uri.file(this.projectConfigFile);
       let textDoc = await workspace.openTextDocument(uri);
@@ -333,6 +328,15 @@ export default class SettingsWrapper extends EventEmitter {
     }
     else {
       throw new Error('No project open');
+    }
+  }
+
+  async createProjectSettings() {
+    if (!await Utils.exists(this.projectConfigFile)) {
+      let json = this._newProjectSettingsJson();
+
+      await fsp.writeFile(this.projectConfigFile, json);
+      await this.watchConfigFile(this.projectConfigFile);
     }
   }
 

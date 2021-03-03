@@ -7,10 +7,15 @@ import _ from 'lodash';
 import * as vscode from 'vscode';
 import Utils from '../helpers/utils.js';
 import ApiWrapper from '../main/api-wrapper.js';
+import SettingsWrapper from '../main/settings-wrapper.js';
 
 export default class StubsManager {
     async updateStubs() {
         let configFolder = Utils.getConfigPath();
+
+        if (!await Utils.exists(configFolder))
+          await fsp.mkdir(configFolder, { recursive: true });
+
         let existingVersionFile = path.join(configFolder, 'Pico-Stub', 'version.json');
         let thisVersionFile = path.resolve(path.join(__dirname, '..', '..', 'stubs', 'version.json'));
         let thisVersion = JSON.parse(await fsp.readFile(thisVersionFile, 'utf-8'));
@@ -32,7 +37,8 @@ export default class StubsManager {
     }
 
     async addToWorkspace() {
-        let api = new ApiWrapper();
+        let settings = new SettingsWrapper();
+        let api = new ApiWrapper(settings);
         let workspace = api.getProjectPath();
         let vsc = path.join(workspace, '.vscode');
 
@@ -43,6 +49,7 @@ export default class StubsManager {
         await this._addStubs(vsc);
         await this._addExtensions(vsc);
         await this._addSettings(vsc);
+        await this._addPicoGoSettings(settings);
 
         vscode.window.showInformationMessage('Project configuration complete!');
         vscode.commands.executeCommand('workbench.extensions.action.showRecommendedExtensions');
@@ -105,5 +112,9 @@ export default class StubsManager {
             settings['python.analysis.extraPaths'].push(path.join('.vscode', 'Pico-Stub', 'stubs'));
 
         await fsp.writeFile(path.join(vsc, 'settings.json'), JSON.stringify(settings, null, 4));
+    }
+
+    async _addPicoGoSettings(settings) {
+        await settings.createProjectSettings();
     }
 }

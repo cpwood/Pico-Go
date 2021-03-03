@@ -33,7 +33,7 @@ export default class Pymakr extends EventEmitter {
     this.outputHidden = false;
 
     this.settings.on('format_error', function() {
-      _this.terminal.writeln('JSON format error in pymakr.conf file');
+      _this.terminal.writeln('JSON format error in global pico-go.json file');
       if (_this.board.connected) {
         _this.terminal.writePrompt();
       }
@@ -41,7 +41,7 @@ export default class Pymakr extends EventEmitter {
 
     this.settings.on('format_error.project', function() {
       _this.terminal.writeln(
-        'JSON format error in pymakr.conf project file');
+        'JSON format error in project pico-go.json file);
       if (_this.board.connected) {
         _this.terminal.writePrompt();
       }

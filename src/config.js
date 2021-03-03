@@ -68,7 +68,7 @@ export default class Config {
       },
       open_on_start: {
         type: 'boolean',
-        default: true,
+        default: false,
         title: 'Open on start',
         description: 'Automatically open the pymakr console and connect to the board after starting VS Code',
         order: 9
@@ -94,8 +94,8 @@ export default class Config {
         items: {
           type: 'string'
         },
-        default: ['pymakr.conf', '.vscode', '.gitignore', '.git',
-          'project.pymakr', 'env', 'venv'
+        default: ['pico-go.json', '.vscode', '.gitignore', '.git',
+          'project.pico-go', 'env', 'venv'
         ],
         order: 7
       },

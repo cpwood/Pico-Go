@@ -2,7 +2,7 @@
   "name": "pico-go",
   "displayName": "Pico-Go",
   "description": "Adds a REPL console to the terminal that connects to your Raspberry Pi Pico board. Run single files or synchronize your project files to your board.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "ChrisWood",
   "homepage": "http://pico-go.net/",
   "repository": "https://github.com/cpwood/Pico-Go",
@@ -87,10 +87,6 @@
       {
         "command": "pymakr.deleteAllFiles",
         "title": "Pico-Go > Delete all files from board"
-      },
-      {
-        "command": "pymakr.projectSettings",
-        "title": "Pico-Go > Project settings"
       },
       {
         "command": "pymakr.globalSettings",
@@ -261,12 +257,6 @@
       "name": "$(gear) Settings",
       "command": "pymakr.globalSettings",
       "tooltip": "Global Pico-Go settings"
-    },
-    {
-      "key": "projectsettings",
-      "name": "$(gear) Project settings",
-      "command": "pymakr.projectSettings",
-      "tooltip": "Project settings for Pico-Go"
     },
     {
       "key": "getversion",
