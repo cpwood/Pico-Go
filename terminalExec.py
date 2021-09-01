@@ -60,7 +60,7 @@ def getCharacterPosix():
   termios.tcsetattr(fd, termios.TCSANOW, newattr)
 
   oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
-  fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
+  fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
 
   try:        
     while True:            
