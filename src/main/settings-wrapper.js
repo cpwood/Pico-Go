@@ -145,7 +145,7 @@ export default class SettingsWrapper extends EventEmitter {
     this.timeout = 15000;
     this._setProjectConfig();
 
-    if (this.statusbar_buttons == undefined || this.statusbar_buttons == '') {
+    if (!Array.isArray(typeof this.statusbar_buttons)) {
       this.statusbar_buttons = ['status', 'connect', 'upload', 'download',
         'run', 'softreset'
       ];
