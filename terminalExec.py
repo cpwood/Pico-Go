@@ -75,8 +75,16 @@ def getCharacterPosix():
 
 def getCharacterWindows():
     while True:
-        c = msvcrt.getch().decode("utf-8")
-        yield c     
+        
+        c = msvcrt.getch()
+        if c == b'\xe0':
+            try:
+                c = b'\x1b' + {b'H': "[A", b'P': "[B", b'M': "[C", b'K': "[D"}[msvcrt.getch()].encode('ascii')
+            except:
+                c += bytes(msvcrt.getch())
+        else: 
+            c = c.decode("utf-8")
+        yield c
         time.sleep(characterDelay)
 
 def boardInput(data: bytes):
@@ -85,7 +93,7 @@ def boardInput(data: bytes):
 
 def userInput(ch: str):
     if (ch != ""):
-        log("Received: " + ch)
+        log("Received: " + str(ch))
         # Posix sends \n only; Windows sends \r only.
         # The board expects \r\n.
         if ch == "\n" or ch == "\r":
@@ -93,7 +101,9 @@ def userInput(ch: str):
 
         with clients_lock:
             for client in clients:
-                client.sendall(str.encode(ch))
+                if type(ch) is not bytes:
+                    ch = str.encode(ch)
+                client.sendall(ch)
 
 def log(msg: str):
     if debug:
